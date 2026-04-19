@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|json\\)$\")",
+      "Bash(find /c/Users/hullg/Documents/Github/Historian/_bmad* -type f -name \"*.md\")",
+      "WebSearch"
+    ]
+  }
+}
