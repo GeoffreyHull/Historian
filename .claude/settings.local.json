@@ -3,7 +3,12 @@
     "allow": [
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|json\\)$\")",
       "Bash(find /c/Users/hullg/Documents/Github/Historian/_bmad* -type f -name \"*.md\")",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")",
+      "Bash(xargs grep *)",
+      "Bash(npm search *)",
+      "Bash(grep -iE \"\\\\.md$\")",
+      "Bash(grep -E \"\\\\.md$\")"
     ]
   }
 }
