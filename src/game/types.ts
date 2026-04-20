@@ -1,0 +1,59 @@
+/**
+ * Core type definitions for the game.
+ * All types are JSON-serializable (no Date, Function, Symbol).
+ * All types are immutable (use readonly for objects and arrays).
+ */
+
+export type EventId = string & { readonly __brand: "EventId" };
+export type TurnNumber = number;
+export type TruthValue = "true" | "false";
+export type Faction = "historian" | "scholar" | "witness" | "scribe";
+
+export const createEventId = (id: string): EventId => id as EventId;
+export const createTurn = (turn: number): TurnNumber => turn;
+
+/**
+ * Event: Represents a historical event that occurred in the world.
+ */
+export interface Event {
+  readonly eventId: EventId;
+  readonly eventType: string; // e.g., "weather", "location", "character"
+  readonly description: string; // e.g., "A light rain fell on the castle"
+  readonly truthValue: TruthValue; // The ground truth: "true" or "false"
+  readonly turnNumber: TurnNumber; // Turn when event occurred
+}
+
+/**
+ * Claim: A narrative claim about an event.
+ */
+export interface Claim {
+  readonly claimText: string; // e.g., "It was raining"
+  readonly eventId: EventId; // Which event is this claim about?
+  readonly isAboutObservedEvent: boolean; // Was this event observable?
+  readonly turnNumber: TurnNumber; // Turn when claim was made
+}
+
+/**
+ * CredibilityResult: Output of credibility evaluation.
+ */
+export interface CredibilityResult {
+  readonly claim: Claim;
+  readonly event: Event;
+  readonly accuracy: "correct" | "incorrect"; // Was the claim accurate?
+  readonly hasInsult: boolean; // Did the claim contain an insult?
+  readonly baseCredibility: number; // [0, 100]
+  readonly penalty: number; // [0, 100] credibility reduction
+  readonly finalCredibility: number; // [0, 100] = baseCredibility - penalty
+}
+
+/**
+ * InfluenceCalculation: Result of influence calculation.
+ */
+export interface InfluenceCalculation {
+  readonly claim: Claim;
+  readonly credibilityResult: CredibilityResult;
+  readonly faction: Faction;
+  readonly credibilityScore: number; // [0, 100]
+  readonly multiplier: number; // faction multiplier
+  readonly influence: number; // credibilityScore × multiplier
+}

@@ -8,7 +8,12 @@
       "Bash(xargs grep *)",
       "Bash(npm search *)",
       "Bash(grep -iE \"\\\\.md$\")",
-      "Bash(grep -E \"\\\\.md$\")"
+      "Bash(grep -E \"\\\\.md$\")",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(node *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
