@@ -69,6 +69,7 @@ describe("EventGenerator", () => {
             "weather",
             "location",
             "character",
+            "conversation",
             "action",
             "discovery",
         ];

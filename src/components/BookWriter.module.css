@@ -1,0 +1,259 @@
+/**
+ * BookWriter styles - CSS modules for scoped styling.
+ * WCAG 2.1 AA compliance: 4.5:1 contrast ratio, 200% text scaling support, no seizure-inducing animations.
+ */
+
+.bookWriter {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.bookWriter h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+}
+
+.bookWriter h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: #2a2a2a;
+}
+
+/* Events section */
+.eventsSection {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+}
+
+.noEvents {
+  color: #666;
+  font-style: italic;
+  margin: 1rem 0;
+}
+
+.eventsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.eventItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.25rem;
+  /* Ensure no visual-only distinction: text + symbol combo */
+}
+
+.observationIndicator {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.observedIcon {
+  color: #0a7f0a; /* WCAG AA green: 4.5:1 contrast on white */
+}
+
+.observedIcon::after {
+  content: " (observed)";
+  font-size: 0.875rem;
+  color: #0a7f0a;
+  margin-left: 0.25rem;
+}
+
+.unobservedIcon {
+  color: #666; /* WCAG AA gray: 4.5:1 contrast on white */
+}
+
+.unobservedIcon::after {
+  content: " (unobserved)";
+  font-size: 0.875rem;
+  color: #666;
+  margin-left: 0.25rem;
+}
+
+.eventDescription {
+  flex-grow: 1;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Form section */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.claimsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.claimInput {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: #fafafa;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+}
+
+.claimInput label {
+  font-weight: 600;
+  color: #2a2a2a;
+  font-size: 0.95rem;
+}
+
+.select,
+.textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  background-color: white;
+  color: #1a1a1a;
+  line-height: 1.5;
+  /* Ensure 4.5:1 contrast */
+}
+
+.select:focus,
+.textarea:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.textarea {
+  min-height: 4rem;
+  resize: vertical;
+  font-family: monospace;
+}
+
+/* Buttons */
+.addButton,
+.removeButton,
+.submitButton {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease-out; /* No seizure-inducing animations */
+  color: white;
+  min-height: 44px; /* Touch target size */
+}
+
+.addButton {
+  background-color: #0066cc;
+  align-self: flex-start;
+}
+
+.addButton:hover {
+  background-color: #0052a3;
+}
+
+.addButton:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.removeButton {
+  background-color: #cc3333;
+  align-self: flex-start;
+}
+
+.removeButton:hover {
+  background-color: #a32626;
+}
+
+.removeButton:focus {
+  outline: 2px solid #cc3333;
+  outline-offset: 2px;
+}
+
+.submitButton {
+  background-color: #0a7f0a;
+  align-self: center;
+  min-width: 200px;
+}
+
+.submitButton:hover {
+  background-color: #086608;
+}
+
+.submitButton:focus {
+  outline: 2px solid #0a7f0a;
+  outline-offset: 2px;
+}
+
+/* Error message */
+.errorMessage {
+  padding: 1rem;
+  background-color: #fee;
+  border: 1px solid #fcc;
+  border-radius: 0.25rem;
+  color: #c33;
+  font-weight: 500;
+  margin: 1rem 0;
+}
+
+/* Responsive design: 200% text scaling support */
+@media (prefers-reduced-motion: reduce) {
+  .addButton,
+  .removeButton,
+  .submitButton {
+    transition: none;
+  }
+}
+
+@media (min-width: 600px) {
+  .bookWriter {
+    padding: 2rem;
+  }
+
+  .claimInput {
+    padding: 1.5rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  .observedIcon {
+    color: #000;
+    font-weight: bold;
+  }
+
+  .unobservedIcon {
+    color: #000;
+    font-weight: bold;
+  }
+
+  .select,
+  .textarea {
+    border-width: 2px;
+  }
+}

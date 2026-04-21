@@ -13,8 +13,9 @@
       "Bash(npm run *)",
       "Bash(node *)",
       "Bash(git add *)",
-      "Bash(git commit*)",
-      "Bash(npm test *)"
+      "Bash(git commit -m ' *)",
+      "Bash(npm test *)",
+      "Bash(git commit -m 'S3: Claims & Observation UI - React component for claim submission *)"
     ]
   }
 }

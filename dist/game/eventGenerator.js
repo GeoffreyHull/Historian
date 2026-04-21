@@ -32,6 +32,13 @@ const EVENT_DESCRIPTIONS_BY_TYPE = {
         "An encounter occurred",
         "A person was met",
     ],
+    conversation: [
+        "A conversation began",
+        "Words were exchanged",
+        "A dialog occurred",
+        "A discussion took place",
+        "People talked",
+    ],
     action: [
         "An action was taken",
         "Something happened",
