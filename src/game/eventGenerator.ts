@@ -147,7 +147,7 @@ export class EventGenerator {
 
     // Cumulative distribution
     let cumsum = 0;
-    const roll = this.rng.nextFloat(0, 1);
+    const roll = this.rng.next();
 
     for (let i = 0; i < types.length; i++) {
       cumsum += normalized[i];

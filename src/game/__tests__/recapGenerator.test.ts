@@ -201,16 +201,19 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         },
       ];
 
-      const worldState = createInitialWorldState();
-      worldState.consequences = [
-        {
-          claimText: "The throne was shaken",
-          triggerEventId: createEventId("evt-previous"),
-          turnIntroduced: createTurn(1),
-          intensity: 30,
-          decayRate: 0.15,
-        },
-      ];
+      const baseState = createInitialWorldState();
+      const worldState = {
+        ...baseState,
+        consequences: [
+          {
+            claimText: "The throne was shaken",
+            triggerEventId: createEventId("evt-previous"),
+            turnIntroduced: createTurn(1),
+            intensity: 30,
+            decayRate: 0.15,
+          },
+        ],
+      };
 
       const recap = generateRunRecap(
         claims,
@@ -240,16 +243,19 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         },
       ];
 
-      const worldState = createInitialWorldState();
-      worldState.consequences = [
-        {
-          claimText: "The blessing was cast",
-          triggerEventId: createEventId("evt-strong"),
-          turnIntroduced: createTurn(1),
-          intensity: 90,
-          decayRate: 0.15,
-        },
-      ];
+      const baseState2 = createInitialWorldState();
+      const worldState = {
+        ...baseState2,
+        consequences: [
+          {
+            claimText: "The blessing was cast",
+            triggerEventId: createEventId("evt-strong"),
+            turnIntroduced: createTurn(1),
+            intensity: 90,
+            decayRate: 0.15,
+          },
+        ],
+      };
 
       const recap = generateRunRecap(
         claims,
