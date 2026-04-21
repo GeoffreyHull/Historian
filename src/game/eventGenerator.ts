@@ -2,11 +2,14 @@
  * EventGenerator: Deterministic event generation with seeded randomness.
  * Constraint 3: Uses SeededRNG for all randomness.
  * Constraint 9: Same seed → identical events (determinism).
+ * Supports probabilistic shaping via faction beliefs (Epic 4).
  */
 
-import { Event, EventId, TurnNumber, TruthValue, createEventId } from "./types";
+import { Event, EventId, TurnNumber, TruthValue, createEventId, Faction } from "./types";
 import { SeededRNG } from "./rng";
 import { EVENT_TYPE_KEYWORDS } from "./constants";
+import { getFactionBeliefInfluence, getConsequenceTexts } from "./worldStateManager";
+import type { WorldState } from "./types";
 
 const EVENT_TYPES = Object.keys(EVENT_TYPE_KEYWORDS);
 
@@ -57,24 +60,53 @@ const EVENT_DESCRIPTIONS_BY_TYPE: Record<string, string[]> = {
 
 /**
  * EventGenerator: Generate deterministic events with seeded randomness.
+ * Supports probabilistic shaping via faction beliefs and consequence references.
  */
 export class EventGenerator {
   private rng: SeededRNG;
   private eventCounter: number = 0;
+  private worldState: WorldState | null = null;
+  private currentFaction: Faction | null = null;
 
   constructor(seed: number) {
     this.rng = new SeededRNG(seed);
   }
 
   /**
-   * Generate events for a turn.
+   * Set world state for faction belief influence (optional, for Epic 4).
+   */
+  setWorldState(worldState: WorldState, currentFaction: Faction): void {
+    this.worldState = worldState;
+    this.currentFaction = currentFaction;
+  }
+
+  /**
+   * Generate events for a turn, optionally influenced by faction beliefs.
    */
   generateEvents(turnNumber: TurnNumber, count: number = 3): Event[] {
     const events: Event[] = [];
 
+    // Get faction belief influence if world state is set
+    const beliefInfluence = this.worldState
+      ? getFactionBeliefInfluence(this.worldState, this.currentFaction!, turnNumber)
+      : {};
+
+    // Get consequence texts for description enrichment
+    const consequenceTexts = this.worldState
+      ? getConsequenceTexts(this.worldState, turnNumber)
+      : [];
+
     for (let i = 0; i < count; i++) {
-      const eventType = this.rng.pick(EVENT_TYPES);
-      const description = this.rng.pick(EVENT_DESCRIPTIONS_BY_TYPE[eventType] || []);
+      // Pick event type, weighted by faction beliefs
+      const eventType = this.pickWeightedEventType(beliefInfluence);
+      let description = this.rng.pick(EVENT_DESCRIPTIONS_BY_TYPE[eventType] || []);
+
+      // Optionally add consequence reference to description
+      if (consequenceTexts.length > 0 && this.rng.nextBool(0.3)) {
+        const reference = this.rng.pick(consequenceTexts);
+        description = `${description} (${reference})`;
+      }
+
       const truthValue: TruthValue = this.rng.nextBool(0.5) ? "true" : "false";
       // Observation: 70% chance to observe
       const observedByPlayer = this.rng.nextBool(0.7);
@@ -92,5 +124,38 @@ export class EventGenerator {
     }
 
     return events;
+  }
+
+  /**
+   * Pick an event type weighted by faction beliefs.
+   */
+  private pickWeightedEventType(
+    beliefInfluence: Readonly<Record<string, number>>
+  ): string {
+    if (Object.keys(beliefInfluence).length === 0) {
+      // No beliefs, use uniform distribution
+      return this.rng.pick(EVENT_TYPES);
+    }
+
+    // Weighted random selection based on belief influence
+    const types = EVENT_TYPES;
+    const weights = types.map((t) => beliefInfluence[t] || 1.0);
+
+    // Normalize weights
+    const sum = weights.reduce((a, b) => a + b, 0);
+    const normalized = weights.map((w) => w / sum);
+
+    // Cumulative distribution
+    let cumsum = 0;
+    const roll = this.rng.nextFloat(0, 1);
+
+    for (let i = 0; i < types.length; i++) {
+      cumsum += normalized[i];
+      if (roll < cumsum) {
+        return types[i];
+      }
+    }
+
+    return types[types.length - 1];
   }
 }

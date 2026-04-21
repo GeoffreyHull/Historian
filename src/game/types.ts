@@ -60,6 +60,37 @@ export interface InfluenceCalculation {
 }
 
 /**
+ * FactionBelief: What a faction believes about events (shaped by player claims).
+ */
+export interface FactionBelief {
+  readonly eventType: string; // e.g., "weather", "location"
+  readonly weight: number; // [0, 100] how likely to appear in future events
+  readonly decayRate: number; // [0, 1] how fast belief fades over time
+  readonly turnIntroduced: TurnNumber; // When this belief was established
+}
+
+/**
+ * WorldState: Persistent state across runs. Shaped by player claims and consequences.
+ */
+export interface WorldState {
+  readonly runNumber: number; // Which run is this (1, 2, 3, etc.)
+  readonly factionBeliefs: Readonly<Record<Faction, readonly FactionBelief[]>>; // What each faction believes
+  readonly consequences: readonly ConsequenceRecord[]; // Events triggered by past claims
+  readonly lastUpdateTurn: TurnNumber; // When world state was last updated
+}
+
+/**
+ * ConsequenceRecord: Tracks that a past claim triggered a future event.
+ */
+export interface ConsequenceRecord {
+  readonly claimText: string; // The original claim
+  readonly triggerEventId: EventId; // Event that was triggered
+  readonly turnIntroduced: TurnNumber; // When the consequence started
+  readonly intensity: number; // [0, 100] how strong the consequence is
+  readonly decayRate: number; // [0, 1] how fast it fades
+}
+
+/**
  * GameState: Complete game state, 100% JSON-serializable.
  */
 export interface GameState {
@@ -70,6 +101,7 @@ export interface GameState {
   readonly credibilityMap: Readonly<Record<EventId, number>>; // event -> credibility [0, 100]
   readonly influence: number; // [0, 100] current influence
   readonly isGameOver: boolean; // Game end state
+  readonly worldState: WorldState; // Persistent state across runs
 }
 
 /**
@@ -79,7 +111,9 @@ export type Action =
   | { type: "writeClaim"; claims: Claim[] }
   | { type: "evaluateClaims"; results: CredibilityResult[] }
   | { type: "nextTurn" }
-  | { type: "updateEvents"; events: Event[] };
+  | { type: "updateEvents"; events: Event[] }
+  | { type: "updateWorldState"; worldState: WorldState }
+  | { type: "endRun"; newWorldState: WorldState };
 
 /**
  * Reducer: Pure function for state updates.

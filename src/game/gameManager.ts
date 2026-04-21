@@ -4,14 +4,16 @@
  * Constraint 2 (immutability) + Constraint 5 (JSON serializable) + Constraint 6 (action dispatch).
  */
 
-import { GameState, Action, Faction, TurnNumber, createTurn, createEventId } from "./types";
+import { GameState, Action, Faction, TurnNumber, createTurn, WorldState } from "./types";
+import { createInitialWorldState } from "./worldStateManager";
 
 /**
  * Create initial game state.
  */
 export function createInitialGameState(
   faction: Faction = "historian",
-  turnNumber: TurnNumber = createTurn(1)
+  turnNumber: TurnNumber = createTurn(1),
+  worldState?: WorldState
 ): GameState {
   return {
     turnNumber,
@@ -21,6 +23,7 @@ export function createInitialGameState(
     credibilityMap: {},
     influence: 50, // Start at neutral influence
     isGameOver: false,
+    worldState: worldState ?? createInitialWorldState(),
   };
 }
 
@@ -84,6 +87,21 @@ export class GameManager {
         return {
           ...state,
           events: [...state.events, ...action.events],
+        };
+
+      case "updateWorldState":
+        // Epic 4: Update persistent world state
+        return {
+          ...state,
+          worldState: action.worldState,
+        };
+
+      case "endRun":
+        // Epic 4: End of run - update world state and mark game over
+        return {
+          ...state,
+          isGameOver: true,
+          worldState: action.newWorldState,
         };
 
       default:
