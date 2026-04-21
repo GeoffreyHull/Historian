@@ -2,9 +2,10 @@
 story: "S0: Test Fixtures & Constants"
 story_key: "0-0-test-fixtures"
 epic: "Epic 3: Author History Through Claims"
-status: "in-progress"
+status: "review"
 created: "2026-04-20"
 started: "2026-04-20"
+completed: "2026-04-20"
 ---
 
 # Story S0: Test Fixtures & Constants Pre-Build

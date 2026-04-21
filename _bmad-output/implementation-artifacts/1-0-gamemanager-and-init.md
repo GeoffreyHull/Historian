@@ -2,8 +2,9 @@
 story: "S1: GameManager & Game Initialization"
 story_key: "1-0-gamemanager"
 epic: "Epic 3: Author History Through Claims"
-status: "in-progress"
+status: "review"
 created: "2026-04-20"
+completed: "2026-04-20"
 ---
 
 # Story S1: GameManager & Game Initialization
