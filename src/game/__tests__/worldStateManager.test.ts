@@ -46,7 +46,12 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
     it("[G] should never mutate claims or events when updating world state", () => {
       const worldState = createInitialWorldState();
-      const claims: Claim[] = [createClaim("The sky was blue", createEventId("evt-1"), true, createTurn(1))];
+      const claims: Claim[] = [createClaim({
+        claimText: "The sky was blue",
+        eventId: createEventId("evt-1"),
+        isAboutObservedEvent: true,
+        turnNumber: 1,
+      })];
       const events: Event[] = [TEST_EVENT];
       const credResults: CredibilityResult[] = [
         {
@@ -111,7 +116,12 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
   describe("FR20: Player claims influence future events", () => {
     it("should track high-credibility claims as potential consequences", () => {
       const worldState = createInitialWorldState();
-      const claims: Claim[] = [createClaim("The sky was blue", createEventId("evt-1"), true, createTurn(1))];
+      const claims: Claim[] = [createClaim({
+        claimText: "The sky was blue",
+        eventId: createEventId("evt-1"),
+        isAboutObservedEvent: true,
+        turnNumber: 1,
+      })];
       const events: Event[] = [TEST_EVENT];
       const credResults: CredibilityResult[] = [
         {
@@ -131,7 +141,12 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
     it("should ignore low-credibility claims", () => {
       const worldState = createInitialWorldState();
-      const claims: Claim[] = [createClaim("The sky was purple", createEventId("evt-1"), true, createTurn(1))];
+      const claims: Claim[] = [createClaim({
+        claimText: "The sky was purple",
+        eventId: createEventId("evt-1"),
+        isAboutObservedEvent: true,
+        turnNumber: 1,
+      })];
       const events: Event[] = [TEST_EVENT];
       const credResults: CredibilityResult[] = [
         {
@@ -154,7 +169,12 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
     it("should create faction beliefs from accurate claims", () => {
       const worldState = createInitialWorldState();
       const claims: Claim[] = [
-        createClaim("The weather was stormy", createEventId("evt-1"), true, createTurn(1)),
+        createClaim({
+          claimText: "The weather was stormy",
+          eventId: createEventId("evt-1"),
+          isAboutObservedEvent: true,
+          turnNumber: 1,
+        }),
       ];
       const events: Event[] = [TEST_EVENT];
       const credResults: CredibilityResult[] = [
@@ -178,7 +198,12 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
     it("should not create beliefs from inaccurate claims", () => {
       const worldState = createInitialWorldState();
-      const claims: Claim[] = [createClaim("The weather was sunny", createEventId("evt-1"), true, createTurn(1))];
+      const claims: Claim[] = [createClaim({
+        claimText: "The weather was sunny",
+        eventId: createEventId("evt-1"),
+        isAboutObservedEvent: true,
+        turnNumber: 1,
+      })];
       const events: Event[] = [TEST_EVENT];
       const credResults: CredibilityResult[] = [
         {
@@ -203,15 +228,20 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
   describe("FR22: Faction beliefs probabilistically shape event generation", () => {
     it("should weight event types based on faction beliefs", () => {
-      const worldState = createInitialWorldState();
-      worldState.factionBeliefs.historian = [
-        {
-          eventType: "weather",
-          weight: 80,
-          decayRate: 0.15,
-          turnIntroduced: createTurn(1),
+      const worldState = {
+        ...createInitialWorldState(),
+        factionBeliefs: {
+          ...createInitialWorldState().factionBeliefs,
+          historian: [
+            {
+              eventType: "weather",
+              weight: 80,
+              decayRate: 0.15,
+              turnIntroduced: createTurn(1),
+            },
+          ],
         },
-      ];
+      };
 
       const influence = getFactionBeliefInfluence(worldState, "historian", createTurn(5));
       expect(influence["weather"]).toBeGreaterThan(1.0);
@@ -219,15 +249,20 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
     });
 
     it("should apply decay to beliefs over time", () => {
-      const worldState = createInitialWorldState();
-      worldState.factionBeliefs.historian = [
-        {
-          eventType: "weather",
-          weight: 80,
-          decayRate: 0.15,
-          turnIntroduced: createTurn(1),
+      const worldState = {
+        ...createInitialWorldState(),
+        factionBeliefs: {
+          ...createInitialWorldState().factionBeliefs,
+          historian: [
+            {
+              eventType: "weather",
+              weight: 80,
+              decayRate: 0.15,
+              turnIntroduced: createTurn(1),
+            },
+          ],
         },
-      ];
+      };
 
       const influenceEarly = getFactionBeliefInfluence(worldState, "historian", createTurn(1));
       const influenceLate = getFactionBeliefInfluence(worldState, "historian", createTurn(20));
@@ -238,16 +273,18 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
   describe("FR23: Event descriptions subtly reference previous consequences", () => {
     it("should return consequence references when available", () => {
-      const worldState = createInitialWorldState();
-      worldState.consequences = [
-        {
-          claimText: "The king was wise",
-          triggerEventId: createEventId("evt-1"),
-          turnIntroduced: createTurn(1),
-          intensity: 50,
-          decayRate: 0.15,
-        },
-      ];
+      const worldState = {
+        ...createInitialWorldState(),
+        consequences: [
+          {
+            claimText: "The king was wise",
+            triggerEventId: createEventId("evt-1"),
+            turnIntroduced: createTurn(1),
+            intensity: 50,
+            decayRate: 0.15,
+          },
+        ],
+      };
 
       const texts = getConsequenceTexts(worldState, createTurn(5));
       expect(texts.length).toBeGreaterThan(0);
@@ -255,16 +292,18 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
     });
 
     it("should fade consequence references over time", () => {
-      const worldState = createInitialWorldState();
-      worldState.consequences = [
-        {
-          claimText: "The sky was blue",
-          triggerEventId: createEventId("evt-1"),
-          turnIntroduced: createTurn(1),
-          intensity: 5,
-          decayRate: 0.5,
-        },
-      ];
+      const worldState = {
+        ...createInitialWorldState(),
+        consequences: [
+          {
+            claimText: "The sky was blue",
+            triggerEventId: createEventId("evt-1"),
+            turnIntroduced: createTurn(1),
+            intensity: 5,
+            decayRate: 0.5,
+          },
+        ],
+      };
 
       const textsEarly = getConsequenceTexts(worldState, createTurn(2));
       const textsLate = getConsequenceTexts(worldState, createTurn(50));
@@ -275,31 +314,38 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
   describe("FR24: World state persists across runs", () => {
     it("should maintain beliefs when evolving to next run", () => {
-      const worldState = createInitialWorldState();
-      worldState.factionBeliefs.historian = [
-        {
-          eventType: "weather",
-          weight: 70,
-          decayRate: 0.15,
-          turnIntroduced: createTurn(1),
+      const worldState = {
+        ...createInitialWorldState(),
+        factionBeliefs: {
+          ...createInitialWorldState().factionBeliefs,
+          historian: [
+            {
+              eventType: "weather",
+              weight: 70,
+              decayRate: 0.15,
+              turnIntroduced: createTurn(1),
+            },
+          ],
         },
-      ];
+      };
 
       const nextRun = evolveToNextRun(worldState, createTurn(10));
       expect(nextRun.factionBeliefs.historian.length).toBeGreaterThan(0);
     });
 
     it("should maintain consequences when evolving to next run", () => {
-      const worldState = createInitialWorldState();
-      worldState.consequences = [
-        {
-          claimText: "The king was wise",
-          triggerEventId: createEventId("evt-1"),
-          turnIntroduced: createTurn(1),
-          intensity: 75,
-          decayRate: 0.15,
-        },
-      ];
+      const worldState = {
+        ...createInitialWorldState(),
+        consequences: [
+          {
+            claimText: "The king was wise",
+            triggerEventId: createEventId("evt-1"),
+            turnIntroduced: createTurn(1),
+            intensity: 75,
+            decayRate: 0.15,
+          },
+        ],
+      };
 
       const nextRun = evolveToNextRun(worldState, createTurn(10));
       expect(nextRun.consequences.length).toBeGreaterThan(0);
@@ -319,16 +365,18 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
   describe("FR25: World state recovers over time (consequences fade)", () => {
     it("should decay consequence intensity as runs progress", () => {
-      const world1 = createInitialWorldState();
-      world1.consequences = [
-        {
-          claimText: "The king was wise",
-          triggerEventId: createEventId("evt-1"),
-          turnIntroduced: createTurn(1),
-          intensity: 100,
-          decayRate: 0.2,
-        },
-      ];
+      const world1 = {
+        ...createInitialWorldState(),
+        consequences: [
+          {
+            claimText: "The king was wise",
+            triggerEventId: createEventId("evt-1"),
+            turnIntroduced: createTurn(1),
+            intensity: 100,
+            decayRate: 0.2,
+          },
+        ],
+      };
 
       const world2 = evolveToNextRun(world1, createTurn(10));
       const world3 = evolveToNextRun(world2, createTurn(10));
@@ -345,31 +393,38 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
     });
 
     it("should remove negligible consequences", () => {
-      const world1 = createInitialWorldState();
-      world1.consequences = [
-        {
-          claimText: "The sky was blue",
-          triggerEventId: createEventId("evt-1"),
-          turnIntroduced: createTurn(1),
-          intensity: 0.05,
-          decayRate: 0.2,
-        },
-      ];
+      const world1 = {
+        ...createInitialWorldState(),
+        consequences: [
+          {
+            claimText: "The sky was blue",
+            triggerEventId: createEventId("evt-1"),
+            turnIntroduced: createTurn(1),
+            intensity: 0.05,
+            decayRate: 0.2,
+          },
+        ],
+      };
 
       const world2 = evolveToNextRun(world1, createTurn(10));
       expect(world2.consequences.filter(c => c.intensity > 0.1).length).toBe(0);
     });
 
     it("should decay faction beliefs similarly to consequences", () => {
-      const world1 = createInitialWorldState();
-      world1.factionBeliefs.historian = [
-        {
-          eventType: "weather",
-          weight: 100,
-          decayRate: 0.2,
-          turnIntroduced: createTurn(1),
+      const world1 = {
+        ...createInitialWorldState(),
+        factionBeliefs: {
+          ...createInitialWorldState().factionBeliefs,
+          historian: [
+            {
+              eventType: "weather",
+              weight: 100,
+              decayRate: 0.2,
+              turnIntroduced: createTurn(1),
+            },
+          ],
         },
-      ];
+      };
 
       const world2 = evolveToNextRun(world1, createTurn(10));
       const world3 = evolveToNextRun(world2, createTurn(10));
@@ -385,24 +440,29 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
 
   describe("Constraint 5: JSON Serialization", () => {
     it("[G] should serialize and deserialize without data loss", () => {
-      const world = createInitialWorldState();
-      world.factionBeliefs.historian = [
-        {
-          eventType: "weather",
-          weight: 75,
-          decayRate: 0.15,
-          turnIntroduced: createTurn(5),
+      const world = {
+        ...createInitialWorldState(),
+        factionBeliefs: {
+          ...createInitialWorldState().factionBeliefs,
+          historian: [
+            {
+              eventType: "weather",
+              weight: 75,
+              decayRate: 0.15,
+              turnIntroduced: createTurn(5),
+            },
+          ],
         },
-      ];
-      world.consequences = [
-        {
-          claimText: "The king spoke",
-          triggerEventId: createEventId("evt-5"),
-          turnIntroduced: createTurn(3),
-          intensity: 60,
-          decayRate: 0.15,
-        },
-      ];
+        consequences: [
+          {
+            claimText: "The king spoke",
+            triggerEventId: createEventId("evt-5"),
+            turnIntroduced: createTurn(3),
+            intensity: 60,
+            decayRate: 0.15,
+          },
+        ],
+      };
 
       const serialized = JSON.stringify(world);
       const deserialized = JSON.parse(serialized);
