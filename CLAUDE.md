@@ -112,5 +112,6 @@ When working in this codebase:
 3. **Run `npm run test:golden`** before committing to verify golden tests still pass
 4. **If a golden test fails**, fix the implementation, not the test
 5. **Document justification** if you must remove a golden test: `GOLDEN REMOVAL: [reason]`
+6. **Run `npm run pipeline`** to ensure all tests pass
 
 The golden test system protects against regression caused by accidental test removal. It's a soft guard relying on agent behavior — trust the system and respect the constraints it protects.

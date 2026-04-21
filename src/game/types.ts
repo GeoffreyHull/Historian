@@ -77,6 +77,19 @@ export interface WorldState {
   readonly factionBeliefs: Readonly<Record<Faction, readonly FactionBelief[]>>; // What each faction believes
   readonly consequences: readonly ConsequenceRecord[]; // Events triggered by past claims
   readonly lastUpdateTurn: TurnNumber; // When world state was last updated
+  readonly history: readonly RunRecap[]; // Accumulated recaps from all completed runs
+}
+
+/**
+ * RunRecap: A lore-narrative summary of what happened in a run.
+ */
+export interface RunRecap {
+  readonly runNumber: number; // Which run (1, 2, 3, etc.)
+  readonly narrative: string; // Lore-style summary (not mechanics language)
+  readonly majorClaims: readonly string[]; // High-credibility claims made
+  readonly triggeredEvents: readonly string[]; // Events that were consequences
+  readonly previousRunReferences: readonly string[]; // References to prior runs
+  readonly timestamp: number; // When this recap was generated (milliseconds since epoch)
 }
 
 /**

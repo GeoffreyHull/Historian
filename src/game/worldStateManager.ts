@@ -31,6 +31,7 @@ export function createInitialWorldState(): WorldState {
     },
     consequences: [],
     lastUpdateTurn: 0,
+    history: [],
   };
 }
 
@@ -64,6 +65,7 @@ export function evolveToNextRun(
     factionBeliefs: decayedBeliefs,
     consequences: decayedConsequences,
     lastUpdateTurn: lastTurnNumber,
+    history: currentWorldState.history,
   };
 }
 
@@ -98,6 +100,7 @@ export function updateWorldStateAfterRun(
     factionBeliefs: updatedBeliefs,
     consequences: [...worldState.consequences, ...newConsequences],
     lastUpdateTurn: events[events.length - 1]?.turnNumber || 1,
+    history: worldState.history,
   };
 }
 
