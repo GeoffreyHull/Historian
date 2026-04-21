@@ -1,0 +1,95 @@
+.credibilityResult {
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.credibilityResult.level-strong {
+  background: rgba(76, 175, 80, 0.05);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.credibilityResult.level-moderate {
+  background: rgba(255, 152, 0, 0.05);
+  border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+.credibilityResult.level-weak {
+  background: rgba(244, 67, 54, 0.05);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.header {
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.level-strong .title {
+  color: #4caf50;
+}
+
+.level-moderate .title {
+  color: #ff9800;
+}
+
+.level-weak .title {
+  color: #f44336;
+}
+
+.factionScores {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.factionName {
+  color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.score {
+  color: #a8a8a8;
+  font-family: monospace;
+}
+
+.footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 12px;
+}
+
+.finalRow {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.finalLabel {
+  color: #a8a8a8;
+  text-transform: uppercase;
+}
+
+.finalScore {
+  color: #f5f5f5;
+  font-family: monospace;
+}

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historian - Design Direction Mockups</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a8a8a8;
+            --historian: #6b9bd1;
+            --scholar: #d4a574;
+            --witness: #7fa372;
+            --scribe: #b8a8d8;
+            --success: #4caf50;
+            --pending: #ff9800;
+            --error: #f44336;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .mockup-nav {
+            background: var(--bg-secondary);
+            padding: var(--space-lg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .mockup-nav h1 {
+            font-size: 24px;
+            margin-bottom: var(--space-md);
+        }
+
+        .mockup-nav .directions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .mockup-nav button {
+            background: var(--historian);
+            color: var(--bg-primary);
+            border: none;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .mockup-nav button:hover {
+            opacity: 0.8;
+        }
+
+        .mockup-nav button.active {
+            background: var(--text-primary);
+        }
+
+        .mockups-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-xl);
+            padding: var(--space-xl);
+        }
+
+        .mockup {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .mockup.active {
+            display: block;
+        }
+
+        .mockup-title {
+            background: rgba(107, 155, 209, 0.1);
+            padding: var(--space-lg);
+            border-bottom: 2px solid var(--historian);
+        }
+
+        .mockup-title h2 {
+            font-size: 24px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .mockup-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .mockup-content {
+            padding: var(--space-lg);
+            min-height: 600px;
+            display: grid;
+            gap: var(--space-lg);
+        }
+
+        /* Direction 1: Claim-Centric (default) */
+        .direction-1 .mockup-content {
+            grid-template-columns: 1fr 300px;
+            grid-template-areas:
+                "header header"
+                "main sidebar"
+                "footer footer";
+        }
+
+        .direction-1 .header {
+            grid-area: header;
+        }
+
+        .direction-1 .main {
+            grid-area: main;
+        }
+
+        .direction-1 .sidebar {
+            grid-area: sidebar;
+        }
+
+        .direction-1 .footer {
+            grid-area: footer;
+        }
+
+        /* Direction 2: Event-Focused */
+        .direction-2 .mockup-content {
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-xl);
+        }
+
+        /* Direction 3: Timeline-First */
+        .direction-3 .mockup-content {
+            grid-template-columns: 200px 1fr;
+            gap: var(--space-xl);
+        }
+
+        /* Direction 4: Modal-Based Claim */
+        .direction-4 .mockup-content {
+            grid-template-columns: 1fr;
+        }
+
+        /* Shared component styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-md);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .header h3 {
+            font-size: 18px;
+        }
+
+        .header .meta {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .event-card {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 4px solid var(--historian);
+            padding: var(--space-md);
+            margin-bottom: var(--space-md);
+            border-radius: 4px;
+        }
+
+        .event-card.false-event {
+            border-left-color: var(--error);
+        }
+
+        .event-card h4 {
+            margin-bottom: var(--space-sm);
+            font-size: 16px;
+        }
+
+        .event-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .claim-input {
+            background: rgba(107, 155, 209, 0.05);
+            border: 2px solid rgba(107, 155, 209, 0.2);
+            padding: var(--space-md);
+            border-radius: 4px;
+            margin-bottom: var(--space-lg);
+        }
+
+        .claim-input textarea {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: var(--space-md);
+            width: 100%;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            margin-bottom: var(--space-sm);
+        }
+
+        .claim-input button {
+            background: var(--historian);
+            color: var(--bg-primary);
+            border: none;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .credibility-result {
+            background: rgba(76, 175, 80, 0.05);
+            border: 1px solid rgba(76, 175, 80, 0.2);
+            padding: var(--space-md);
+            border-radius: 4px;
+            margin-bottom: var(--space-md);
+        }
+
+        .credibility-result h4 {
+            margin-bottom: var(--space-sm);
+            color: var(--success);
+        }
+
+        .credibility-row {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 14px;
+        }
+
+        .credibility-row:last-child {
+            border-bottom: none;
+        }
+
+        .faction-icon {
+            margin-right: var(--space-sm);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.02);
+            padding: var(--space-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .sidebar h4 {
+            margin-bottom: var(--space-md);
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .ledger-item {
+            padding: var(--space-sm);
+            margin-bottom: var(--space-sm);
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 2px solid var(--historian);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .ledger-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .ledger-item .claim-id {
+            color: var(--historian);
+            font-weight: 600;
+        }
+
+        .ledger-item .claim-text {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .faction-status {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-sm);
+            margin-top: var(--space-md);
+        }
+
+        .faction-bar {
+            background: rgba(255, 255, 255, 0.03);
+            padding: var(--space-sm);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .faction-bar .icon {
+            display: block;
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .faction-bar .value {
+            color: var(--text-secondary);
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.02);
+            padding: var(--space-md);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .evaluation-guide {
+            background: rgba(107, 155, 209, 0.1);
+            padding: var(--space-lg);
+            margin-top: var(--space-xl);
+            border-radius: 8px;
+            border-left: 4px solid var(--historian);
+        }
+
+        .evaluation-guide h3 {
+            margin-bottom: var(--space-md);
+        }
+
+        .evaluation-guide ul {
+            list-style: none;
+        }
+
+        .evaluation-guide li {
+            padding: var(--space-sm) 0;
+            padding-left: var(--space-lg);
+            position: relative;
+        }
+
+        .evaluation-guide li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-nav">
+        <h1>🎨 Historian Design Directions</h1>
+        <div class="directions">
+            <button class="active" onclick="showMockup(1)">Direction 1: Claim-Centric</button>
+            <button onclick="showMockup(2)">Direction 2: Event-Focused</button>
+            <button onclick="showMockup(3)">Direction 3: Timeline-First</button>
+            <button onclick="showMockup(4)">Direction 4: Consequence-Centric</button>
+            <button onclick="showMockup(5)">Direction 5: Ledger-First</button>
+            <button onclick="showMockup(6)">Direction 6: Minimal Clarity</button>
+        </div>
+    </div>
+
+    <div class="mockups-container">
+        <!-- Direction 1: Claim-Centric (Writer's Focus) -->
+        <div class="mockup direction-1 active">
+            <div class="mockup-title">
+                <h2>Direction 1: Claim-Centric (Writer's Focus)</h2>
+                <p>Events are context; claims are the center. Large input, immediate feedback. Perfect for narrative-focused players.</p>
+            </div>
+            <div class="mockup-content">
+                <div class="header">
+                    <h3>Turn 5: Three Events</h3>
+                    <div class="meta">Run 2 • 5/10 turns complete</div>
+                </div>
+
+                <div class="main">
+                    <div class="event-card">
+                        <h4>🌧️ Morning Rain</h4>
+                        <p>"Morning rain fell on the kingdom, dampening the harvest. Merchants prepared for trade disruption."</p>
+                    </div>
+
+                    <div class="event-card false-event">
+                        <h4>🏰 Border Alert</h4>
+                        <p>"Border patrols reported increased vigilance at the northern posts."</p>
+                    </div>
+
+                    <div class="claim-input">
+                        <h4>Your Claim About These Events:</h4>
+                        <textarea placeholder="Declare your account of what happened...">Morning rain fell and disrupted trade</textarea>
+                        <button>Submit Claim</button>
+                    </div>
+
+                    <div class="credibility-result">
+                        <h4>✓ Claim Received (64% Average)</h4>
+                        <div class="credibility-row">
+                            <span><span class="faction-icon">📖</span>Historian</span>
+                            <span style="color: var(--historian);">68%</span>
+                        </div>
+                        <div class="credibility-row">
+                            <span><span class="faction-icon">🔬</span>Scholar</span>
+                            <span style="color: var(--scholar);">55%</span>
+                        </div>
+                        <div class="credibility-row">
+                            <span><span class="faction-icon">👁️</span>Witness</span>
+                            <span style="color: var(--witness);">71%</span>
+                        </div>
+                        <div class="credibility-row">
+                            <span><span class="faction-icon">✍️</span>Scribe</span>
+                            <span style="color: var(--scribe);">62%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <h4>Claims This Turn</h4>
+                    <div class="ledger-item">
+                        <div class="claim-id">C5</div>
+                        <div class="claim-text">"Morning rain fell and disrupted trade"</div>
+                    </div>
+
+                    <h4 style="margin-top: var(--space-lg);">Faction Trust</h4>
+                    <div class="faction-status">
+                        <div class="faction-bar">
+                            <span class="icon">📖</span>
+                            <span class="value">68%</span>
+                        </div>
+                        <div class="faction-bar">
+                            <span class="icon">🔬</span>
+                            <span class="value">55%</span>
+                        </div>
+                        <div class="faction-bar">
+                            <span class="icon">👁️</span>
+                            <span class="value">71%</span>
+                        </div>
+                        <div class="faction-bar">
+                            <span class="icon">✍️</span>
+                            <span class="value">62%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <strong>Layout Insight:</strong> Events provide context (above), claim input dominates center, feedback is immediate right sidebar.
+                    Perfect for players focused on writing. Sidebar shows ledger + faction status for always-present context.
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 2: Event-Focused -->
+        <div class="mockup direction-2">
+            <div class="mockup-title">
+                <h2>Direction 2: Event-Focused (Discovery First)</h2>
+                <p>Side-by-side event exploration. Large event cards on left, claims on right. Best for event-first reading behavior.</p>
+            </div>
+            <div class="mockup-content">
+                <div style="grid-column: 1/-1;">
+                    <div class="header">
+                        <h3>Turn 5: Choose Events to Claim About</h3>
+                        <div class="meta">Run 2 • 5/10 turns complete</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="margin-bottom: var(--space-md);">Events This Turn</h4>
+                    <div class="event-card" style="margin-bottom: var(--space-lg);">
+                        <h4>🌧️ Morning Rain</h4>
+                        <p>"Morning rain fell on the kingdom, dampening the harvest. Merchants prepared for trade disruption."</p>
+                    </div>
+
+                    <div class="event-card false-event" style="margin-bottom: var(--space-lg);">
+                        <h4>🏰 Border Alert</h4>
+                        <p>"Border patrols reported increased vigilance at the northern posts."</p>
+                    </div>
+
+                    <div class="event-card">
+                        <h4>📜 Merchant Gathering</h4>
+                        <p>"Merchants gathered in the town square to discuss trade routes affected by weather."</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="margin-bottom: var(--space-md);">Make Your Claims (1-3)</h4>
+                    <div class="claim-input">
+                        <textarea placeholder="Your account of Morning Rain event..." style="min-height: 80px;">Morning rains fell, interrupting the harvest</textarea>
+                        <button>Add Claim</button>
+                    </div>
+
+                    <div class="claim-input">
+                        <textarea placeholder="Your account of Border Alert event..." style="min-height: 80px;">Border patrols were heightened</textarea>
+                        <button>Add Claim</button>
+                    </div>
+
+                    <div class="credibility-result">
+                        <h4>✓ 2 Claims Recorded</h4>
+                        <div class="credibility-row">
+                            <span>Morning Rain: 64%</span>
+                            <span style="color: var(--historian);">📖 Trust</span>
+                        </div>
+                        <div class="credibility-row">
+                            <span>Border Alert: 41%</span>
+                            <span style="color: var(--error);">⊘ Dispute</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 3: Timeline-First -->
+        <div class="mockup direction-3">
+            <div class="mockup-title">
+                <h2>Direction 3: Timeline-First (Consequence Focus)</h2>
+                <p>Timeline sidebar shows runs and consequences. Main area shows current turn. Best for consequence discovery.</p>
+            </div>
+            <div class="mockup-content">
+                <div style="grid-column: 1/-1;">
+                    <div class="header">
+                        <h3>Turn 5: The Rain's Echo</h3>
+                        <div class="meta">Run 2 • Claims: 3 • Avg Credibility: 58%</div>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <h4>Timeline & Consequences</h4>
+                    <div class="ledger-item" style="border-left-color: var(--success);">
+                        <div class="claim-id">Run 1</div>
+                        <div class="claim-text">5 claims made • 58% avg trust</div>
+                    </div>
+                    <div class="ledger-item">
+                        <div class="claim-id">C1 ✓</div>
+                        <div class="claim-text">"Rain fell"</div>
+                    </div>
+                    <div class="ledger-item">
+                        <div class="claim-id">C3 ✓</div>
+                        <div class="claim-text">"Merchants gathered"</div>
+                    </div>
+                    <div style="padding: var(--space-md); background: rgba(255, 255, 255, 0.03); margin-top: var(--space-md); border-radius: 4px; font-size: 12px;">
+                        <strong>C1 echoes:</strong> Weather events +40% this run
+                    </div>
+                </div>
+
+                <div>
+                    <div class="event-card" style="margin-bottom: var(--space-lg);">
+                        <h4>🌧️ Drought Ends</h4>
+                        <p>"The year's drought finally ended. Merchants spoke of the first run's declaration: 'rains will come.'"</p>
+                        <div style="margin-top: var(--space-sm); font-size: 12px; color: var(--success);">📎 Echoed from C1</div>
+                    </div>
+
+                    <div class="claim-input">
+                        <textarea placeholder="Your response to this event..." style="min-height: 100px;">The rains I predicted have come</textarea>
+                        <button>Submit Claim</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 4: Consequence-Centric (Modal) -->
+        <div class="mockup direction-4">
+            <div class="mockup-title">
+                <h2>Direction 4: Consequence-Centric (Modal Deep Dives)</h2>
+                <p>Clean turn view with modal popups for detail. Consequence tracer appears on demand. Minimalist approach.</p>
+            </div>
+            <div class="mockup-content">
+                <div class="header">
+                    <h3>Turn 7: Four Events</h3>
+                    <div class="meta">Run 2 • 7/10 complete • Last consequence discovered: Turn 5</div>
+                </div>
+
+                <div>
+                    <div class="event-card" style="cursor: pointer;">
+                        <h4>🌧️ Drought Ends</h4>
+                        <p>"The year's drought finally ended. Merchants spoke of declarations made in the first age."</p>
+                        <div style="margin-top: var(--space-sm); font-size: 12px; color: var(--historian); cursor: pointer;">
+                            🔗 Show causal chain »
+                        </div>
+                    </div>
+
+                    <div class="event-card" style="margin: var(--space-lg) 0; cursor: pointer;">
+                        <h4>📜 Trade Expansion</h4>
+                        <p>"With the drought broken, merchants began expanding their networks across the kingdom."</p>
+                        <div style="margin-top: var(--space-sm); font-size: 12px; color: var(--text-secondary);">
+                            ⊘ No causal link identified
+                        </div>
+                    </div>
+                </div>
+
+                <div class="claim-input">
+                    <h4>Declare Your Claim</h4>
+                    <textarea placeholder="Describe what you witnessed..." style="min-height: 120px;">The drought has broken and merchants grow bold</textarea>
+                    <button>Record Claim (2/3 used)</button>
+                </div>
+
+                <div style="background: rgba(76, 175, 80, 0.05); border: 1px solid rgba(76, 175, 80, 0.2); padding: var(--space-md); border-radius: 4px;">
+                    <h4 style="color: var(--success); margin-bottom: var(--space-sm);">🔗 Consequence Tracer Modal (Minimized)</h4>
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        <strong>C1:</strong> "Rain fell" (Run 1) → Historian belief +40 weather → This turn: drought event echoed from that belief
+                    </p>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin-top: var(--space-sm);">
+                        Click event name above to expand full tracer modal
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 5: Ledger-First -->
+        <div class="mockup direction-5">
+            <div class="mockup-title">
+                <h2>Direction 5: Ledger-First (Strategic Replay)</h2>
+                <p>Claim ledger is the primary navigation. Shows all claims, statuses, consequences. Events below as reference.</p>
+            </div>
+            <div class="mockup-content">
+                <div class="header" style="grid-column: 1/-1;">
+                    <h3>Your Claims (Run 1 → Run 2)</h3>
+                    <div class="meta">Turn 5/10 • Avg Credibility: 58%</div>
+                </div>
+
+                <div class="sidebar" style="grid-column: 1/-1; max-height: none; border: 2px solid var(--historian);">
+                    <h4>Claim Ledger</h4>
+                    <div class="ledger-item" style="border-left-color: var(--success); padding: var(--space-md); cursor: pointer;">
+                        <div class="claim-id">C1</div>
+                        <div class="claim-text">"Morning rain fell on the kingdom"</div>
+                        <div style="margin-top: var(--space-sm); font-size: 12px; color: var(--text-secondary);">
+                            ✓ Confirmed in Run 2 (68% credibility) • Triggered 2 weather events
+                        </div>
+                    </div>
+
+                    <div class="ledger-item" style="border-left-color: var(--error); padding: var(--space-md); cursor: pointer; margin-top: var(--space-sm);">
+                        <div class="claim-id">C2</div>
+                        <div class="claim-text">"Border patrols were heightened"</div>
+                        <div style="margin-top: var(--space-sm); font-size: 12px; color: var(--error);">
+                            ⊘ Disputed (41% credibility) • No consequences triggered
+                        </div>
+                    </div>
+                </div>
+
+                <div style="grid-column: 1/-1; margin-top: var(--space-lg); border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: var(--space-lg);">
+                    <h4 style="margin-bottom: var(--space-md);">This Turn's Events (Reference)</h4>
+                    <div class="event-card">
+                        <h4>📜 Merchant Gathering</h4>
+                        <p>"Merchants gathered in the town square..."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 6: Minimal Clarity -->
+        <div class="mockup direction-6">
+            <div class="mockup-title">
+                <h2>Direction 6: Minimal Clarity (Pure Text Focus)</h2>
+                <p>Maximum text clarity. No visual decoration. Events, claims, credibility all in simple text. Most accessible.</p>
+            </div>
+            <div class="mockup-content">
+                <div style="grid-column: 1/-1; background: rgba(255, 255, 255, 0.02); padding: var(--space-md); border-radius: 4px;">
+                    <h3>TURN 5 OF 10 (RUN 2)</h3>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-top: var(--space-sm);">Last consequence discovered: Turn 3. Claim ledger: 2 confirmed, 1 disputed.</p>
+                </div>
+
+                <div style="grid-column: 1/-1;">
+                    <h4>EVENTS THIS TURN</h4>
+                    <div style="margin-top: var(--space-md); line-height: 1.8;">
+                        <p>EVENT 1 — Morning rain fell on the kingdom, dampening the harvest.</p>
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-top: var(--space-sm);">[Truth: Accurate | Reference: C1 (64% credibility, Run 1)]</p>
+
+                        <p style="margin-top: var(--space-lg);">EVENT 2 — Border patrols reported increased vigilance.</p>
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-top: var(--space-sm);">[Truth: False | No causal link]</p>
+
+                        <p style="margin-top: var(--space-lg);">EVENT 3 — Merchants gathered in the town square.</p>
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-top: var(--space-sm);">[Truth: Accurate | No causal link]</p>
+                    </div>
+                </div>
+
+                <div style="grid-column: 1/-1; background: rgba(255, 255, 255, 0.02); padding: var(--space-md); border-radius: 4px; margin-top: var(--space-lg);">
+                    <h4>YOUR CLAIM (max 150 characters)</h4>
+                    <p style="margin-top: var(--space-md); font-style: italic; color: var(--text-secondary);">"Morning rain disrupted harvest trade"</p>
+                    <button style="margin-top: var(--space-md);">SUBMIT CLAIM (1 OF 3)</button>
+                </div>
+
+                <div style="grid-column: 1/-1; background: rgba(76, 175, 80, 0.05); padding: var(--space-md); border-radius: 4px;">
+                    <h4>CREDIBILITY RESULTS</h4>
+                    <div style="margin-top: var(--space-md); font-family: monospace; font-size: 14px;">
+                        <p>Historian:  68% (Strong)</p>
+                        <p>Scholar:    55% (Moderate)</p>
+                        <p>Witness:    71% (Strong)</p>
+                        <p>Scribe:     62% (Strong)</p>
+                        <p style="margin-top: var(--space-md); font-weight: bold; color: var(--text-primary);">FINAL: 64% (Strong)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evaluation Guide -->
+        <div class="evaluation-guide">
+            <h3>🎯 Design Direction Evaluation Framework</h3>
+            <ul>
+                <li><strong>Layout Intuitiveness:</strong> Which information hierarchy matches your priorities? Does the eye follow the right path (events → claims → consequences)?</li>
+                <li><strong>Authorship Support:</strong> Which approach makes players feel like storytellers, not mechanics optimizers? Does claim submission feel central and rewarding?</li>
+                <li><strong>Causality Visibility:</strong> How clearly can players trace "I said X → Event includes X"? Are consequences linked back to claims visibly?</li>
+                <li><strong>Replayability Signal:</strong> Which direction best shows players "if I claim more about weather, I'll trigger more weather events"? Does strategic learning emerge?</li>
+                <li><strong>Accessibility Readability:</strong> Which direction is most readable at 200% zoom? Is text hierarchy clear without color dependence?</li>
+                <li><strong>Emotional Response:</strong> Which approach best supports feelings of authorship, agency, and cleverness? Which feels epic rather than mechanical?</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function showMockup(num) {
+            // Hide all mockups
+            document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+
+            // Show selected mockup
+            document.querySelector(`.direction-${num}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

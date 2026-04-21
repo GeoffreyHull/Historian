@@ -1,0 +1,40 @@
+.eventCard {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 4px solid #6b9bd1;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.emoji {
+  font-size: 18px;
+  min-width: 24px;
+}
+
+.observationIndicator {
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.observed {
+  color: #4caf50;
+}
+
+.unobserved {
+  color: #a8a8a8;
+}
+
+.description {
+  margin: 0;
+  color: #f5f5f5;
+  font-size: 14px;
+  line-height: 1.6;
+}
