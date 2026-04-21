@@ -105,6 +105,7 @@ function* generateAccuracyTestCases() {
                 description: `An event of type ${eventType} with truth value ${truthValue}`,
                 truthValue: truthValue,
                 turnNumber: 1,
+                observedByPlayer: true,
             },
             expectedAccuracy: expected,
         };

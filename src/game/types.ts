@@ -21,6 +21,7 @@ export interface Event {
   readonly description: string; // e.g., "A light rain fell on the castle"
   readonly truthValue: TruthValue; // The ground truth: "true" or "false"
   readonly turnNumber: TurnNumber; // Turn when event occurred
+  readonly observedByPlayer: boolean; // Whether player witnessed this event
 }
 
 /**
@@ -57,3 +58,30 @@ export interface InfluenceCalculation {
   readonly multiplier: number; // faction multiplier
   readonly influence: number; // credibilityScore × multiplier
 }
+
+/**
+ * GameState: Complete game state, 100% JSON-serializable.
+ */
+export interface GameState {
+  readonly turnNumber: TurnNumber; // Current turn
+  readonly currentFaction: Faction; // Player faction
+  readonly events: readonly Event[]; // All events
+  readonly claims: readonly Claim[]; // All claims made
+  readonly credibilityMap: Readonly<Record<EventId, number>>; // event -> credibility [0, 100]
+  readonly influence: number; // [0, 100] current influence
+  readonly isGameOver: boolean; // Game end state
+}
+
+/**
+ * Action: Generic action for state updates.
+ */
+export type Action =
+  | { type: "writeClaim"; claims: Claim[] }
+  | { type: "evaluateClaims"; results: CredibilityResult[] }
+  | { type: "nextTurn" }
+  | { type: "updateEvents"; events: Event[] };
+
+/**
+ * Reducer: Pure function for state updates.
+ */
+export type Reducer = (state: GameState, action: Action) => GameState;

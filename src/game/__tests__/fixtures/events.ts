@@ -12,6 +12,7 @@ export const WEATHER_RAIN: Event = {
   description: "A light rain fell on the castle grounds throughout the morning.",
   truthValue: "true",
   turnNumber: 1,
+  observedByPlayer: true,
 };
 
 export const WEATHER_WIND: Event = {
@@ -20,6 +21,7 @@ export const WEATHER_WIND: Event = {
   description: "Strong winds gusted through the forest, bending tree branches.",
   truthValue: "false", // Actually, it was calm
   turnNumber: 2,
+  observedByPlayer: false,
 };
 
 export const WEATHER_CLEAR: Event = {
@@ -28,6 +30,7 @@ export const WEATHER_CLEAR: Event = {
   description: "The sky was clear and sunny, perfect for travel.",
   truthValue: "true",
   turnNumber: 3,
+  observedByPlayer: true,
 };
 
 // Location events (3)
@@ -37,6 +40,7 @@ export const LOCATION_CASTLE: Event = {
   description: "The party arrived at the castle gates.",
   truthValue: "true",
   turnNumber: 4,
+  observedByPlayer: true,
 };
 
 export const LOCATION_FOREST: Event = {
@@ -45,6 +49,7 @@ export const LOCATION_FOREST: Event = {
   description: "The forest was dark and impassable.",
   truthValue: "false", // Path was clear
   turnNumber: 5,
+  observedByPlayer: false,
 };
 
 export const LOCATION_VILLAGE: Event = {
@@ -53,6 +58,7 @@ export const LOCATION_VILLAGE: Event = {
   description: "They found shelter in a small village by the river.",
   truthValue: "true",
   turnNumber: 6,
+  observedByPlayer: true,
 };
 
 // Character events (3)
@@ -62,6 +68,7 @@ export const CHARACTER_APPEARANCE: Event = {
   description: "A stranger appeared from the shadows.",
   truthValue: "true",
   turnNumber: 7,
+  observedByPlayer: true,
 };
 
 export const CHARACTER_ACTION: Event = {
@@ -70,6 +77,7 @@ export const CHARACTER_ACTION: Event = {
   description: "The merchant spoke with a thick accent.",
   truthValue: "true",
   turnNumber: 8,
+  observedByPlayer: true,
 };
 
 export const CHARACTER_CONVERSATION: Event = {
@@ -78,6 +86,7 @@ export const CHARACTER_CONVERSATION: Event = {
   description: "They debated the price for an hour.",
   truthValue: "false", // Only 10 minutes
   turnNumber: 9,
+  observedByPlayer: false,
 };
 
 // Edge case events (3)
@@ -87,6 +96,7 @@ export const EDGE_EMPTY_DESCRIPTION: Event = {
   description: "", // Empty but valid
   truthValue: "true",
   turnNumber: 10,
+  observedByPlayer: true,
 };
 
 export const EDGE_MAX_LENGTH: Event = {
@@ -97,6 +107,7 @@ export const EDGE_MAX_LENGTH: Event = {
     "maps to distant lands, and chronicles of civilizations long forgotten, spanning millennia of history.",
   truthValue: "true",
   turnNumber: 11,
+  observedByPlayer: false,
 };
 
 export const EDGE_SPECIAL_CHARS: Event = {
@@ -105,6 +116,7 @@ export const EDGE_SPECIAL_CHARS: Event = {
   description: "Found: 'Tome of Lore' (cost: 500¢, value: ∞)",
   truthValue: "true",
   turnNumber: 12,
+  observedByPlayer: true,
 };
 
 // Conflict events (3)
@@ -114,6 +126,7 @@ export const CONFLICT_CONTRADICTORY_1: Event = {
   description: "The knight attacked the dragon.",
   truthValue: "true",
   turnNumber: 13,
+  observedByPlayer: true,
 };
 
 export const CONFLICT_CONTRADICTORY_2: Event = {
@@ -122,6 +135,7 @@ export const CONFLICT_CONTRADICTORY_2: Event = {
   description: "The knight attacked the dragon.",
   truthValue: "false", // Same event, opposite truth
   turnNumber: 14,
+  observedByPlayer: false,
 };
 
 export const CONFLICT_AMBIGUOUS: Event = {
@@ -130,6 +144,7 @@ export const CONFLICT_AMBIGUOUS: Event = {
   description: "The crown was lost in the tower.",
   truthValue: "true", // Lost in tower but later recovered elsewhere?
   turnNumber: 15,
+  observedByPlayer: true,
 };
 
 /**

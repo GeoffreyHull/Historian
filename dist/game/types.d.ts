@@ -20,6 +20,7 @@ export interface Event {
     readonly description: string;
     readonly truthValue: TruthValue;
     readonly turnNumber: TurnNumber;
+    readonly observedByPlayer: boolean;
 }
 /**
  * Claim: A narrative claim about an event.
@@ -53,4 +54,35 @@ export interface InfluenceCalculation {
     readonly multiplier: number;
     readonly influence: number;
 }
+/**
+ * GameState: Complete game state, 100% JSON-serializable.
+ */
+export interface GameState {
+    readonly turnNumber: TurnNumber;
+    readonly currentFaction: Faction;
+    readonly events: readonly Event[];
+    readonly claims: readonly Claim[];
+    readonly credibilityMap: Readonly<Record<EventId, number>>;
+    readonly influence: number;
+    readonly isGameOver: boolean;
+}
+/**
+ * Action: Generic action for state updates.
+ */
+export type Action = {
+    type: "writeClaim";
+    claims: Claim[];
+} | {
+    type: "evaluateClaims";
+    results: CredibilityResult[];
+} | {
+    type: "nextTurn";
+} | {
+    type: "updateEvents";
+    events: Event[];
+};
+/**
+ * Reducer: Pure function for state updates.
+ */
+export type Reducer = (state: GameState, action: Action) => GameState;
 //# sourceMappingURL=types.d.ts.map

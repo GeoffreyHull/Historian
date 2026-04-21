@@ -165,6 +165,7 @@ export function* generateAccuracyTestCases(): Generator<AccuracyTestCase> {
         description: `An event of type ${eventType} with truth value ${truthValue}`,
         truthValue: truthValue as "true" | "false",
         turnNumber: 1,
+        observedByPlayer: true,
       },
       expectedAccuracy: expected,
     };

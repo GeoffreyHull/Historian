@@ -13,6 +13,7 @@ exports.WEATHER_RAIN = {
     description: "A light rain fell on the castle grounds throughout the morning.",
     truthValue: "true",
     turnNumber: 1,
+    observedByPlayer: true,
 };
 exports.WEATHER_WIND = {
     eventId: (0, types_1.createEventId)("evt-weather-002"),
@@ -20,6 +21,7 @@ exports.WEATHER_WIND = {
     description: "Strong winds gusted through the forest, bending tree branches.",
     truthValue: "false", // Actually, it was calm
     turnNumber: 2,
+    observedByPlayer: false,
 };
 exports.WEATHER_CLEAR = {
     eventId: (0, types_1.createEventId)("evt-weather-003"),
@@ -27,6 +29,7 @@ exports.WEATHER_CLEAR = {
     description: "The sky was clear and sunny, perfect for travel.",
     truthValue: "true",
     turnNumber: 3,
+    observedByPlayer: true,
 };
 // Location events (3)
 exports.LOCATION_CASTLE = {
@@ -35,6 +38,7 @@ exports.LOCATION_CASTLE = {
     description: "The party arrived at the castle gates.",
     truthValue: "true",
     turnNumber: 4,
+    observedByPlayer: true,
 };
 exports.LOCATION_FOREST = {
     eventId: (0, types_1.createEventId)("evt-location-002"),
@@ -42,6 +46,7 @@ exports.LOCATION_FOREST = {
     description: "The forest was dark and impassable.",
     truthValue: "false", // Path was clear
     turnNumber: 5,
+    observedByPlayer: false,
 };
 exports.LOCATION_VILLAGE = {
     eventId: (0, types_1.createEventId)("evt-location-003"),
@@ -49,6 +54,7 @@ exports.LOCATION_VILLAGE = {
     description: "They found shelter in a small village by the river.",
     truthValue: "true",
     turnNumber: 6,
+    observedByPlayer: true,
 };
 // Character events (3)
 exports.CHARACTER_APPEARANCE = {
@@ -57,6 +63,7 @@ exports.CHARACTER_APPEARANCE = {
     description: "A stranger appeared from the shadows.",
     truthValue: "true",
     turnNumber: 7,
+    observedByPlayer: true,
 };
 exports.CHARACTER_ACTION = {
     eventId: (0, types_1.createEventId)("evt-character-002"),
@@ -64,6 +71,7 @@ exports.CHARACTER_ACTION = {
     description: "The merchant spoke with a thick accent.",
     truthValue: "true",
     turnNumber: 8,
+    observedByPlayer: true,
 };
 exports.CHARACTER_CONVERSATION = {
     eventId: (0, types_1.createEventId)("evt-character-003"),
@@ -71,6 +79,7 @@ exports.CHARACTER_CONVERSATION = {
     description: "They debated the price for an hour.",
     truthValue: "false", // Only 10 minutes
     turnNumber: 9,
+    observedByPlayer: false,
 };
 // Edge case events (3)
 exports.EDGE_EMPTY_DESCRIPTION = {
@@ -79,6 +88,7 @@ exports.EDGE_EMPTY_DESCRIPTION = {
     description: "", // Empty but valid
     truthValue: "true",
     turnNumber: 10,
+    observedByPlayer: true,
 };
 exports.EDGE_MAX_LENGTH = {
     eventId: (0, types_1.createEventId)("evt-edge-002"),
@@ -87,6 +97,7 @@ exports.EDGE_MAX_LENGTH = {
         "maps to distant lands, and chronicles of civilizations long forgotten, spanning millennia of history.",
     truthValue: "true",
     turnNumber: 11,
+    observedByPlayer: false,
 };
 exports.EDGE_SPECIAL_CHARS = {
     eventId: (0, types_1.createEventId)("evt-edge-003"),
@@ -94,6 +105,7 @@ exports.EDGE_SPECIAL_CHARS = {
     description: "Found: 'Tome of Lore' (cost: 500¢, value: ∞)",
     truthValue: "true",
     turnNumber: 12,
+    observedByPlayer: true,
 };
 // Conflict events (3)
 exports.CONFLICT_CONTRADICTORY_1 = {
@@ -102,6 +114,7 @@ exports.CONFLICT_CONTRADICTORY_1 = {
     description: "The knight attacked the dragon.",
     truthValue: "true",
     turnNumber: 13,
+    observedByPlayer: true,
 };
 exports.CONFLICT_CONTRADICTORY_2 = {
     eventId: (0, types_1.createEventId)("evt-conflict-002"),
@@ -109,6 +122,7 @@ exports.CONFLICT_CONTRADICTORY_2 = {
     description: "The knight attacked the dragon.",
     truthValue: "false", // Same event, opposite truth
     turnNumber: 14,
+    observedByPlayer: false,
 };
 exports.CONFLICT_AMBIGUOUS = {
     eventId: (0, types_1.createEventId)("evt-conflict-003"),
@@ -116,6 +130,7 @@ exports.CONFLICT_AMBIGUOUS = {
     description: "The crown was lost in the tower.",
     truthValue: "true", // Lost in tower but later recovered elsewhere?
     turnNumber: 15,
+    observedByPlayer: true,
 };
 /**
  * SEEDED_EVENTS: Array of all fixture events for parametrized testing.
