@@ -48,7 +48,11 @@ export function executeTurn(
   playerClaims: Claim[]
 ): TurnPhaseResult {
   const currentTurn = gameState.turnNumber;
-  const eventGenerator = new EventGenerator(currentTurn);
+
+  // FR46-FR47: Use world's initial seed for deterministic event generation across run resumptions
+  // Constraint 9: Turn-phase determinism requires seed stability, not turn-based variation
+  const deterministicSeed = gameState.worldState.initialSeed + currentTurn;
+  const eventGenerator = new EventGenerator(deterministicSeed);
 
   // Phase 1: Generate events for this turn
   eventGenerator.setWorldState(gameState.worldState, gameState.currentFaction);
@@ -60,10 +64,14 @@ export function executeTurn(
   // Create a manager to handle state updates
   const manager = new GameManager(gameState);
 
-  // Phase 3: Evaluate player claims
+  // Phase 3: Evaluate player claims (FR8: limit to 1-3 claims per turn)
   let credibilityResults: CredibilityResult[] = [];
-  if (playerClaims.length > 0) {
-    credibilityResults = evaluateClaimsBatch(playerClaims, events, gameState.currentFaction);
+  const validatedClaims = playerClaims.slice(0, 3); // Enforce 1-3 claim limit (FR8)
+  if (playerClaims.length > 3) {
+    console.warn(`Truncated ${playerClaims.length} claims to 3-claim limit (FR8)`);
+  }
+  if (validatedClaims.length > 0) {
+    credibilityResults = evaluateClaimsBatch(validatedClaims, events, gameState.currentFaction);
     manager.dispatch({ type: "evaluateClaims", results: credibilityResults });
   }
 

@@ -73,6 +73,7 @@ export interface FactionBelief {
  * WorldState: Persistent state across runs. Shaped by player claims and consequences.
  */
 export interface WorldState {
+  readonly initialSeed: number; // Seed for deterministic event generation (set at game start, persisted across runs)
   readonly runNumber: number; // Which run is this (1, 2, 3, etc.)
   readonly factionBeliefs: Readonly<Record<Faction, readonly FactionBelief[]>>; // What each faction believes
   readonly consequences: readonly ConsequenceRecord[]; // Events triggered by past claims

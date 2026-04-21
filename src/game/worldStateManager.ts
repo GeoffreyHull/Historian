@@ -19,9 +19,12 @@ import { EVENT_TYPE_KEYWORDS } from "./constants";
 
 /**
  * Create initial world state for run 1.
+ * initialSeed: Deterministic seed for event generation across all runs.
+ * FR46-FR47: Same seed ensures identical event sequences on resumption.
  */
-export function createInitialWorldState(): WorldState {
+export function createInitialWorldState(initialSeed: number = Math.floor(Math.random() * 1000000)): WorldState {
   return {
+    initialSeed,
     runNumber: 1,
     factionBeliefs: {
       historian: [],
@@ -61,6 +64,7 @@ export function evolveToNextRun(
   };
 
   return {
+    initialSeed: currentWorldState.initialSeed, // Preserve seed across runs for deterministic resumption (FR46-FR47)
     runNumber: nextRun,
     factionBeliefs: decayedBeliefs,
     consequences: decayedConsequences,
