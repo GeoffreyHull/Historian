@@ -1,5 +1,1 @@
-declare module "vitest" {
-  interface TaskMeta {
-    golden?: boolean;
-  }
-}
+/// <reference types="vitest/globals" />
