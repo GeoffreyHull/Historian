@@ -2,11 +2,12 @@
  * EventGenerator tests: Verify determinism (Constraint 9).
  */
 
+import { golden } from "./utils/golden";
 import { EventGenerator } from "../eventGenerator";
 import { SeededRNG } from "../rng";
 
 describe("SeededRNG", () => {
-  it("should produce identical sequences with same seed", () => {
+  golden("should produce identical sequences with same seed", () => {
     const rng1 = new SeededRNG(42);
     const seq1 = [rng1.next(), rng1.next(), rng1.next()];
 
@@ -51,7 +52,7 @@ describe("SeededRNG", () => {
 });
 
 describe("EventGenerator", () => {
-  it("should produce identical events with same seed", () => {
+  golden("should produce identical events with same seed", () => {
     const gen1 = new EventGenerator(42);
     const events1 = gen1.generateEvents(1 as any, 5);
 
@@ -107,7 +108,7 @@ describe("EventGenerator", () => {
     expect(unobserved.length).toBeGreaterThan(0); // At least some unobserved
   });
 
-  it("should generate events with deterministic descriptions", () => {
+  golden("should generate events with deterministic descriptions", () => {
     const gen1 = new EventGenerator(42);
     const events1 = gen1.generateEvents(1 as any, 3);
 

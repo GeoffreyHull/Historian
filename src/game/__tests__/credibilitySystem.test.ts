@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { golden } from "./utils/golden";
 import {
   evaluateClaimAccuracy,
   detectInsult,
@@ -186,7 +187,7 @@ describe("Influence Calculation (AC4)", () => {
 // ============================================================================
 
 describe("Immutability & Purity (AC5)", () => {
-  it("should not mutate claim input", () => {
+  golden("should not mutate claim input", () => {
     const claim = createClaim();
     const claimCopy = JSON.parse(JSON.stringify(claim));
 
@@ -195,7 +196,7 @@ describe("Immutability & Purity (AC5)", () => {
     expect(claim).toEqual(claimCopy);
   });
 
-  it("should not mutate event input", () => {
+  golden("should not mutate event input", () => {
     const event = SEEDED_EVENTS[0];
     const eventCopy = JSON.parse(JSON.stringify(event));
 
@@ -204,7 +205,7 @@ describe("Immutability & Purity (AC5)", () => {
     expect(event).toEqual(eventCopy);
   });
 
-  it("should return new objects", () => {
+  golden("should return new objects", () => {
     const result1 = evaluateClaim(createClaim(), SEEDED_EVENTS[0], "historian");
     const result2 = evaluateClaim(createClaim(), SEEDED_EVENTS[0], "historian");
 
@@ -212,7 +213,7 @@ describe("Immutability & Purity (AC5)", () => {
     expect(result1).toEqual(result2); // But same values
   });
 
-  it("should be deterministic: same inputs → identical results", () => {
+  golden("should be deterministic: same inputs → identical results", () => {
     const claim = createClaim({ claimText: "test" });
     const event = SEEDED_EVENTS[0];
     const faction = "historian";
@@ -257,7 +258,7 @@ describe("Integration: Full Credibility Flow (AC6)", () => {
     expect(results[1].penalty).toBeGreaterThanOrEqual(10);
   });
 
-  it("should be deterministic: same seed → identical state hash", () => {
+  golden("should be deterministic: same seed → identical state hash", () => {
     const claims = [
       createAccurateClaim(SEEDED_EVENTS[0]),
       createAccurateClaim(SEEDED_EVENTS[1]),
@@ -272,14 +273,14 @@ describe("Integration: Full Credibility Flow (AC6)", () => {
     expect(hash1).toBe(hash2);
   });
 
-  it("should be deterministic: 100× identical results", () => {
+  golden("should be deterministic: 100× identical results", () => {
     assertDeterministic(() => {
       const claims = [createAccurateClaim(SEEDED_EVENTS[0])];
       return evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
     }, 100);
   });
 
-  it("should produce JSON-serializable results", () => {
+  golden("should produce JSON-serializable results", () => {
     const claims = [createAccurateClaim(SEEDED_EVENTS[0])];
     const results = evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
 

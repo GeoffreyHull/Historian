@@ -3,6 +3,7 @@
  * Validates: immutability (Constraint 2), JSON serialization (Constraint 5), action dispatch (Constraint 6).
  */
 
+import { golden } from "./utils/golden";
 import { GameManager, createInitialGameState } from "../gameManager";
 import { createEventId } from "../types";
 import { SEEDED_EVENTS } from "./fixtures/events";
@@ -33,7 +34,7 @@ describe("GameManager", () => {
   });
 
   describe("immutability (Constraint 2)", () => {
-    it("should not mutate state when dispatching action", () => {
+    golden("should not mutate state when dispatching action", () => {
       const manager = new GameManager();
       const originalState = manager.getState();
       const originalClaimsLength = originalState.claims.length;
@@ -45,7 +46,7 @@ describe("GameManager", () => {
       expect(manager.getState().claims.length).toBe(originalClaimsLength + 1); // New state updated
     });
 
-    it("should not mutate credibility map when evaluating claims", () => {
+    golden("should not mutate credibility map when evaluating claims", () => {
       const manager = new GameManager();
       const originalState = manager.getState();
       const originalMap = { ...originalState.credibilityMap };
@@ -72,7 +73,7 @@ describe("GameManager", () => {
   });
 
   describe("JSON serialization (Constraint 5)", () => {
-    it("should round-trip through JSON.stringify/parse", () => {
+    golden("should round-trip through JSON.stringify/parse", () => {
       const manager = new GameManager();
       manager.dispatch({
         type: "writeClaim",
@@ -86,7 +87,7 @@ describe("GameManager", () => {
       expect(restored).toEqual(state);
     });
 
-    it("should not contain non-serializable properties", () => {
+    golden("should not contain non-serializable properties", () => {
       const manager = new GameManager();
       const state = manager.getState();
 
