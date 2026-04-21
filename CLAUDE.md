@@ -103,15 +103,38 @@ npm run test:ui
 
 ---
 
+## Pipeline Requirements
+
+Every acceptance criterion and code change MUST pass the full CI/CD pipeline before being considered complete:
+
+```bash
+npm run type-check    # TypeScript strict mode validation
+npm run build         # TypeScript compilation to JavaScript
+npm test              # All unit, integration, and e2e tests
+npm run test:golden   # Golden test suite (protected constraints)
+```
+
+**All four commands must succeed with no errors or warnings.** The pipeline enforces:
+- ✅ TypeScript strict type checking (no `any` allowances)
+- ✅ Clean compilation to JavaScript
+- ✅ All tests passing (100% pass rate required)
+- ✅ All golden tests passing (regression protection)
+
 ## Summary for Agents
 
 When working in this codebase:
 
 1. **Look for `[G]` prefix** — these are protected tests
 2. **Don't delete or modify them** unless the underlying AC/constraint changed
-3. **Run `npm run test:golden`** before committing to verify golden tests still pass
-4. **If a golden test fails**, fix the implementation, not the test
-5. **Document justification** if you must remove a golden test: `GOLDEN REMOVAL: [reason]`
-6. **Run `npm run pipeline`** to ensure all tests pass
+3. **Before committing:**
+   - Run `npm run type-check` to verify no TypeScript errors
+   - Run `npm run build` to verify compilation succeeds
+   - Run `npm test` to verify all tests pass
+   - Run `npm run test:golden` to verify golden tests pass
+4. **Document justification** if you must remove a golden test: `GOLDEN REMOVAL: [reason]`
+5. **Always verify the pipeline passes** before creating commits or PRs
+6. **No AC is complete until the pipeline passes** — this is a hard requirement, not optional
 
 The golden test system protects against regression caused by accidental test removal. It's a soft guard relying on agent behavior — trust the system and respect the constraints it protects.
+
+Line endings are configured via `.gitattributes` (LF for source files, CRLF for Windows scripts). Git will warn if mismatches occur; resolve by running the pipeline.
