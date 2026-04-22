@@ -58,7 +58,7 @@ test.describe("Main Menu", () => {
     await startButton.click();
 
     // Game screen should appear
-    await expect(page.locator("text=Turn 1 Events")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Turn 1 / 10")).toBeVisible({ timeout: 10000 });
     await expect(page.locator("text=Make Your Claims")).toBeVisible({ timeout: 10000 });
   });
 });
@@ -78,7 +78,7 @@ test.describe("App Health & Startup", () => {
     await startButton.click();
 
     // Game screen loads
-    await expect(page.locator("text=Turn 1 Events")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Turn 1 / 10")).toBeVisible({ timeout: 10000 });
 
     // Check no fatal console errors
     const consoleMessages: { type: string; text: string }[] = [];
@@ -98,7 +98,7 @@ test.describe("App Health & Startup", () => {
     await page.locator("button:has-text('Begin Your Account')").click();
 
     // Wait for events section
-    await expect(page.locator("text=Turn 1 Events")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Turn 1 / 10")).toBeVisible({ timeout: 10000 });
 
     // Check at least one event exists
     const eventElements = page.locator('[role="article"]');
@@ -192,5 +192,67 @@ test.describe("App Health & Startup", () => {
 
     // Button should now be disabled
     await expect(submitButton).toBeDisabled({ timeout: 10000 });
+  });
+});
+
+test.describe("Turn Progression", () => {
+  test.setTimeout(60000);
+
+  test("End Turn button is visible but disabled before any claims", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.locator("button:has-text('Begin Your Account')").click();
+    await expect(page.locator("text=Turn 1 / 10")).toBeVisible({ timeout: 10000 });
+
+    const endTurnButton = page.locator("button:has-text('End Turn')");
+    await expect(endTurnButton).toBeVisible({ timeout: 10000 });
+    await expect(endTurnButton).toBeDisabled();
+    await expect(page.locator("text=Write at least one claim to end the turn")).toBeVisible();
+  });
+
+  test("End Turn button enables after submitting a claim", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.locator("button:has-text('Begin Your Account')").click();
+
+    const textarea = page.locator("textarea");
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+    await textarea.fill("The storm approached from the north");
+    await page.locator("button:has-text('Submit Claim')").click();
+    await expect(page.locator("text=C1")).toBeVisible({ timeout: 10000 });
+
+    const endTurnButton = page.locator("button:has-text('End Turn')");
+    await expect(endTurnButton).toBeEnabled({ timeout: 5000 });
+  });
+
+  test("clicking End Turn advances to the next turn", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.locator("button:has-text('Begin Your Account')").click();
+    await expect(page.locator("text=Turn 1 / 10")).toBeVisible({ timeout: 10000 });
+
+    const textarea = page.locator("textarea");
+    await textarea.fill("The storm approached from the north");
+    await page.locator("button:has-text('Submit Claim')").click();
+    await expect(page.locator("text=C1")).toBeVisible({ timeout: 10000 });
+
+    await page.locator("button:has-text('End Turn')").click();
+
+    await expect(page.locator("text=Turn 2 / 10")).toBeVisible({ timeout: 10000 });
+    // Claim ledger resets for new turn
+    await expect(page.locator("text=No claims yet this turn")).toBeVisible({ timeout: 5000 });
+  });
+
+  test("can progress through multiple turns", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.locator("button:has-text('Begin Your Account')").click();
+
+    for (let turn = 1; turn <= 3; turn++) {
+      await expect(page.locator(`text=Turn ${turn} / 10`)).toBeVisible({ timeout: 10000 });
+      const textarea = page.locator("textarea");
+      await textarea.fill(`Claim for turn ${turn}`);
+      await page.locator("button:has-text('Submit Claim')").click();
+      await expect(page.locator("text=C1")).toBeVisible({ timeout: 10000 });
+      await page.locator("button:has-text('End Turn')").click();
+    }
+
+    await expect(page.locator("text=Turn 4 / 10")).toBeVisible({ timeout: 10000 });
   });
 });
