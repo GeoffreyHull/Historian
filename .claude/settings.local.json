@@ -20,7 +20,9 @@
       "Bash(git checkout *)",
       "Bash(git config *)",
       "Bash(gh repo *)",
-      "Bash(grep -E \"\\\\.\\(md|txt\\)$\")"
+      "Bash(grep -E \"\\\\.\\(md|txt\\)$\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

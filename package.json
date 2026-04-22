@@ -4,7 +4,9 @@
   "description": "A historical narrative game with credibility-based world state evolution",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
@@ -12,7 +14,12 @@
     "type-check": "tsc --noEmit",
     "pipeline": "npm run type-check && npm run build && npm run test"
   },
-  "keywords": ["game", "narrative", "credibility", "deterministic"],
+  "keywords": [
+    "game",
+    "narrative",
+    "credibility",
+    "deterministic"
+  ],
   "author": "Geoff",
   "license": "MIT",
   "dependencies": {
@@ -23,6 +30,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.7.0",
     "@vitest/ui": "^1.0.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"
