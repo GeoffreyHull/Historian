@@ -8,11 +8,15 @@ import { Claim, Event, EventId, TurnNumber, CredibilityResult } from "./types";
 
 /**
  * ActionLog: Record of a player action.
+ * `sequence` is a monotonically increasing logical clock — it disambiguates
+ * actions that occur within the same millisecond and guarantees causal ordering
+ * regardless of wall-clock resolution (FR29, Constraint 9).
  */
 export interface ActionLog {
   readonly type: "claim" | "evaluate" | "consequence";
   readonly turnNumber: TurnNumber;
   readonly timestamp: number;
+  readonly sequence: number; // Logical clock: unique, monotonically increasing per TracingSystem instance
   readonly actionHash: string; // Deterministic hash of the action
   readonly stateHash: string; // Hash of game state after action
 }
@@ -52,6 +56,7 @@ export type AnyLog = ClaimLog | ConsequenceLog | EvaluationLog;
  */
 export class TracingSystem {
   private logs: AnyLog[] = [];
+  private logSequence = 0;
 
   /**
    * Log a player claim (FR26).
@@ -61,6 +66,7 @@ export class TracingSystem {
       type: "claim",
       turnNumber,
       timestamp: Date.now(),
+      sequence: this.logSequence++,
       claim,
       eventId: claim.eventId,
       actionHash: this.hashClaim(claim),
@@ -81,6 +87,7 @@ export class TracingSystem {
       type: "evaluate",
       turnNumber,
       timestamp: Date.now(),
+      sequence: this.logSequence++,
       claim,
       credibilityResult,
       actionHash: this.hashClaim(claim),
@@ -101,6 +108,7 @@ export class TracingSystem {
       type: "consequence",
       turnNumber: triggeredEvent.turnNumber,
       timestamp: Date.now(),
+      sequence: this.logSequence++,
       triggeringClaimId,
       triggeredEventId: triggeredEvent.eventId,
       confidence,
@@ -122,6 +130,14 @@ export class TracingSystem {
    */
   getLogsByType(type: "claim" | "evaluate" | "consequence"): readonly AnyLog[] {
     return this.logs.filter((log) => log.type === type);
+  }
+
+  /**
+   * Get all logs sorted by sequence number (logical clock order).
+   * Guarantees causal ordering even when multiple events share the same timestamp (FR29).
+   */
+  getLogsInOrder(): readonly AnyLog[] {
+    return [...this.logs].sort((a, b) => a.sequence - b.sequence);
   }
 
   /**
@@ -175,21 +191,31 @@ export class TracingSystem {
   }
 
   /**
-   * Simple hash function for claims (deterministic).
+   * Simple hash function for claims (deterministic, 32-bit safe).
+   * Uses `| 0` to coerce each step to a signed 32-bit integer, preventing
+   * JavaScript's 53-bit float precision from causing overflow-induced
+   * non-determinism on long claim strings.
    */
   private hashClaim(claim: Claim): string {
-    return `claim-${claim.claimText}-${claim.eventId}`.split("").reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, 0).toString();
+    const str = `claim-${claim.claimText}-${claim.eventId}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (((hash << 5) - hash) + str.charCodeAt(i)) | 0;
+    }
+    return hash.toString();
   }
 
   /**
-   * Simple hash function for events (deterministic).
+   * Simple hash function for events (deterministic, 32-bit safe).
+   * See hashClaim for overflow rationale.
    */
   private hashEvent(event: Event): string {
-    return `event-${event.eventId}-${event.turnNumber}`.split("").reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, 0).toString();
+    const str = `event-${event.eventId}-${event.turnNumber}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (((hash << 5) - hash) + str.charCodeAt(i)) | 0;
+    }
+    return hash.toString();
   }
 }
 
