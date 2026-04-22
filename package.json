@@ -11,6 +11,9 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:golden": "vitest run",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:debug": "playwright test --debug",
     "type-check": "tsc --noEmit",
     "pipeline": "npm run type-check && npm run build && npm run test"
   },
@@ -27,6 +30,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
