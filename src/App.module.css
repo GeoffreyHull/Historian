@@ -123,6 +123,15 @@
   padding-bottom: 12px;
 }
 
+.influenceDisplay {
+  font-size: 13px;
+  font-weight: 400;
+  color: #c9a84c;
+  margin-left: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .eventList {
   display: flex;
   flex-direction: column;
