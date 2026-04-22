@@ -1,4 +1,11 @@
 {
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "geoffreyhull.github.io"
+      ]
+    }
+  },
   "permissions": {
     "allow": [
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|json\\)$\")",
