@@ -2,7 +2,8 @@ import React, { useState, useMemo } from "react";
 import { GameManager, createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
 import { evaluateClaimsBatch } from "./game/credibilitySystem";
-import { Claim } from "./game/types";
+import { Claim, Faction } from "./game/types";
+import { MainMenu } from "./components/MainMenu";
 import { EventCard } from "./components/EventCard";
 import { ClaimInput } from "./components/ClaimInput";
 import { CredibilityResult } from "./components/CredibilityResult";
@@ -10,14 +11,19 @@ import { ClaimLedger } from "./components/ClaimLedger";
 import { FactionTrust } from "./components/FactionTrust";
 import styles from "./App.module.css";
 
+type GameState = "menu" | "playing";
+
 export const App: React.FC = () => {
+  const [gameScreenState, setGameScreenState] = useState<GameState>("menu");
+  const [selectedFaction, setSelectedFaction] = useState<Faction>("historian");
+
   const gameManager = useMemo(() => {
-    const manager = new GameManager();
+    const manager = new GameManager(createInitialGameState(selectedFaction));
     const generator = new EventGenerator(42); // Seeded for determinism
     const generatedEvents = generator.generateEvents(3); // 3 events per turn
     manager.dispatch({ type: "updateEvents", events: generatedEvents });
     return manager;
-  }, []);
+  }, [selectedFaction]);
 
   const gameState = gameManager.getState();
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -25,12 +31,19 @@ export const App: React.FC = () => {
     Array<{ eventId: string; finalCredibility: number }>
   >([]);
 
+  const handleStartGame = (faction: Faction) => {
+    setSelectedFaction(faction);
+    setGameScreenState("playing");
+    setClaims([]);
+    setCredibilityResults([]);
+  };
+
   const handleClaimSubmit = (claimText: string) => {
     const eventIndex = claims.length % gameState.events.length;
     const selectedEvent = gameState.events[eventIndex];
     const newClaim: Claim = {
       claimText,
-      eventId: selectedEvent?.eventId ?? "unknown" as any,
+      eventId: selectedEvent?.eventId ?? ("unknown" as any),
       isAboutObservedEvent: selectedEvent?.observedByPlayer ?? false,
       turnNumber: gameState.turnNumber,
     };
@@ -56,6 +69,10 @@ export const App: React.FC = () => {
       results,
     });
   };
+
+  if (gameScreenState === "menu") {
+    return <MainMenu onStartGame={handleStartGame} />;
+  }
 
   const claimLedgerItems = claims.map((claim, index) => {
     const cred = credibilityResults[index]?.finalCredibility ?? 0;

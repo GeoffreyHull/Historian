@@ -1,16 +1,84 @@
 import { test, expect } from "@playwright/test";
 
+test.describe("Main Menu", () => {
+  test.setTimeout(60000);
+
+  test("main menu loads with title and rules", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    // Check title
+    await expect(page.locator("h1")).toContainText("Historian");
+
+    // Check tagline
+    await expect(page.locator("text=A game of narrative and consequence")).toBeVisible();
+
+    // Check section headers
+    await expect(page.locator("text=Choose Your Voice")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Faction Disposition")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=How to Play")).toBeVisible({ timeout: 10000 });
+  });
+
+  test("faction card is selectable", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    // Historian faction card should be visible and clickable
+    const factionCard = page.locator("text=Historian").first();
+    await expect(factionCard).toBeVisible({ timeout: 10000 });
+
+    // Card should have proper accessibility attributes
+    const radioButton = page.locator('[role="radio"]').first();
+    await expect(radioButton).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("all faction trust levels display", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    // Wait for trust grid section
+    const dispositionSection = page.locator("text=Faction Disposition");
+    await expect(dispositionSection).toBeVisible({ timeout: 10000 });
+
+    // Each should show a percentage - check the trust cards specifically
+    const trustCards = page.locator('[class*="trustCard"]');
+    expect(await trustCards.count()).toBe(4);
+
+    // Verify all faction names appear in trust cards
+    const trustSection = page.locator('[class*="trustGrid"]');
+    await expect(trustSection.locator("text=historian")).toBeVisible();
+    await expect(trustSection.locator("text=scholar")).toBeVisible();
+    await expect(trustSection.locator("text=witness")).toBeVisible();
+    await expect(trustSection.locator("text=scribe")).toBeVisible();
+  });
+
+  test("start button launches the game", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    // Find and click start button
+    const startButton = page.locator("button:has-text('Begin Your Account')");
+    await expect(startButton).toBeVisible({ timeout: 10000 });
+    await startButton.click();
+
+    // Game screen should appear
+    await expect(page.locator("text=Turn 1 Events")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Make Your Claims")).toBeVisible({ timeout: 10000 });
+  });
+});
+
 test.describe("App Health & Startup", () => {
   test.setTimeout(60000);
 
-  test("app loads without errors", async ({ page }) => {
+  test("game loads without errors after menu", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
 
     // Check page title
     await expect(page).toHaveTitle("Historian - A Game of Narrative and Consequence");
 
-    // Check main header exists
-    await expect(page.locator("h1")).toContainText("Historian");
+    // Start game
+    const startButton = page.locator("button:has-text('Begin Your Account')");
+    await expect(startButton).toBeVisible({ timeout: 10000 });
+    await startButton.click();
+
+    // Game screen loads
+    await expect(page.locator("text=Turn 1 Events")).toBeVisible({ timeout: 10000 });
 
     // Check no fatal console errors
     const consoleMessages: { type: string; text: string }[] = [];
@@ -18,13 +86,16 @@ test.describe("App Health & Startup", () => {
       consoleMessages.push({ type: msg.type(), text: msg.text() });
     });
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
     const errors = consoleMessages.filter((m) => m.type === "error");
     expect(errors).toEqual([]);
   });
 
   test("events render on the board", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
+
+    // Start game
+    await page.locator("button:has-text('Begin Your Account')").click();
 
     // Wait for events section
     await expect(page.locator("text=Turn 1 Events")).toBeVisible({ timeout: 10000 });
@@ -36,6 +107,9 @@ test.describe("App Health & Startup", () => {
 
   test("can submit a claim and see credibility result", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
+
+    // Start game
+    await page.locator("button:has-text('Begin Your Account')").click();
 
     // Find and fill textarea
     const textarea = page.locator("textarea");
@@ -59,6 +133,9 @@ test.describe("App Health & Startup", () => {
   test("faction trust sidebar displays all 4 factions", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
 
+    // Start game
+    await page.locator("button:has-text('Begin Your Account')").click();
+
     // Wait for faction section
     const factionTrustSection = page.locator('[role="region"][aria-label="Faction trust levels"]');
     await expect(factionTrustSection).toBeVisible({ timeout: 10000 });
@@ -72,6 +149,9 @@ test.describe("App Health & Startup", () => {
 
   test("claim ledger shows claims in order", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
+
+    // Start game
+    await page.locator("button:has-text('Begin Your Account')").click();
 
     // Wait for textarea
     const textarea = page.locator("textarea");
@@ -94,6 +174,9 @@ test.describe("App Health & Startup", () => {
 
   test("submit button disables after 3 claims", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
+
+    // Start game
+    await page.locator("button:has-text('Begin Your Account')").click();
 
     const textarea = page.locator("textarea");
     const submitButton = page.locator("button:has-text('Submit Claim')");
