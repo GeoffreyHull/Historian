@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  base: "/Historian/",
   server: {
     port: 3000,
     open: false,
