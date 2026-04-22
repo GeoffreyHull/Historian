@@ -18,6 +18,7 @@ import { EventGenerator } from "./eventGenerator";
 import { evaluateClaimsBatch } from "./credibilitySystem";
 import { aggregateInfluence } from "./influenceCalculator";
 import { updateWorldStateAfterRun, evolveToNextRun } from "./worldStateManager";
+import { computeTrustDeltas, applyTrustDeltas, isAutoLoss } from "./factionTrustSystem";
 import { generateRunRecap, formatHistoryBook } from "./recapGenerator";
 import { GameManager } from "./gameManager";
 
@@ -82,6 +83,16 @@ export function executeTurn(
   let state = manager.getState();
   state = { ...state, influence: state.influence + influenceEarned };
 
+  // Phase 4b: Update faction trust based on credibility results (FR15-FR18)
+  const trustDeltas = computeTrustDeltas(credibilityResults, gameState.currentFaction);
+  const updatedTrust = applyTrustDeltas(state.factionTrust, trustDeltas);
+  state = { ...state, factionTrust: updatedTrust };
+
+  // FR18: Auto-loss if all factions refuse (trust < -100)
+  if (isAutoLoss(state.factionTrust)) {
+    state = { ...state, isGameOver: true };
+  }
+
   // Phase 5: Check if run is complete (10 turns)
   const isRunComplete = currentTurn >= 10;
 
@@ -113,13 +124,14 @@ export function executeTurn(
       history: [...nextRunWorldState.history, recap],
     };
 
-    // Reset game state for next run
+    // Reset game state for next run (factionTrust resets each run — fresh start)
     state = {
       ...state,
       turnNumber: createTurn(1),
       events: [],
       claims: [],
       credibilityMap: {},
+      factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0 },
       worldState: worldStateWithRecap,
       isGameOver: false,
     };
