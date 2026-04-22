@@ -138,3 +138,22 @@ When working in this codebase:
 The golden test system protects against regression caused by accidental test removal. It's a soft guard relying on agent behavior — trust the system and respect the constraints it protects.
 
 Line endings are configured via `.gitattributes` (LF for source files, CRLF for Windows scripts). Git will warn if mismatches occur; resolve by running the pipeline.
+
+---
+
+## Development Server
+
+**Always run `npm run dev` in a terminal during local development.** The dev server:
+
+- Starts at `http://localhost:3000`
+- Provides Hot Module Replacement (HMR) — changes to React components, CSS, and TypeScript are reflected instantly
+- Enables interactive debugging — see changes as you code without manual rebuilds
+- Required for E2E tests — the test suite (`npm run e2e`) expects the dev server at localhost:3000
+
+**When starting a session:**
+1. Open a terminal and run `npm run dev` (keep it running in the background)
+2. Open browser to http://localhost:3000
+3. Make changes to src/ files
+4. Watch the page update live as you save
+
+**Do NOT rely on build artifacts during development.** The build output (`dist/`) is for production only. All development work flows through the dev server's Vite instance.
