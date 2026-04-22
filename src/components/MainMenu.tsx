@@ -15,9 +15,10 @@ import styles from "./MainMenu.module.css";
 
 interface MainMenuProps {
   onStartGame: (faction: Faction) => void;
+  onContinueGame?: () => void;
 }
 
-export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
+export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onContinueGame }) => {
   const [selectedFaction, setSelectedFaction] = React.useState<Faction>("historian");
 
   const factions: Array<{ name: Faction; emoji: string; description: string }> = [
@@ -116,13 +117,24 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
           </ul>
         </section>
 
-        <button
-          className={styles.startButton}
-          onClick={() => onStartGame(selectedFaction)}
-          aria-label={`Start game as ${selectedFaction}`}
-        >
-          Begin Your Account
-        </button>
+        <div className={styles.actionButtons}>
+          {onContinueGame && (
+            <button
+              className={styles.continueButton}
+              onClick={onContinueGame}
+              aria-label="Continue saved game"
+            >
+              ▶ Continue Saved Game
+            </button>
+          )}
+          <button
+            className={styles.startButton}
+            onClick={() => onStartGame(selectedFaction)}
+            aria-label={`Start game as ${selectedFaction}`}
+          >
+            Begin Your Account
+          </button>
+        </div>
       </main>
 
       <footer className={styles.footer}>
