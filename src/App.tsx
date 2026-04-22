@@ -6,6 +6,7 @@ import { executeTurn } from "./game/turnExecutor";
 import { Claim, Faction, GameState, RunRecap as RunRecapData } from "./game/types";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
 import { buildHistoryBookData } from "./game/historyBookUtils";
+import { buyIntel, canBuyIntel, BUY_INTEL_COST } from "./game/influenceActions";
 import { MainMenu } from "./components/MainMenu";
 import { EventCard } from "./components/EventCard";
 import { ClaimInput } from "./components/ClaimInput";
@@ -104,6 +105,11 @@ export const App: React.FC = () => {
     setCredibilityResults(
       results.map((r) => ({ eventId: r.event.eventId, finalCredibility: r.finalCredibility }))
     );
+  };
+
+  const handleBuyIntel = (eventId: string) => {
+    const updated = buyIntel(gameState, eventId as any);
+    setGameState(updated);
   };
 
   const handleEndTurn = () => {
@@ -272,11 +278,24 @@ export const App: React.FC = () => {
         <main className={styles.main}>
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
-              Turn {gameState.turnNumber} / 10 — Events
+              Turn {gameState.turnNumber} / 10 — Events{" "}
+              <span
+                className={styles.influenceDisplay}
+                title={`${gameState.influence.toFixed(1)} influence — spend ${BUY_INTEL_COST} to reveal hidden events`}
+                aria-label={`Current influence: ${gameState.influence.toFixed(1)}`}
+                data-testid="influence-display"
+              >
+                ✨ {gameState.influence.toFixed(1)} influence
+              </span>
             </h2>
             <div className={styles.eventList}>
               {gameState.events.map((event) => (
-                <EventCard key={event.eventId} event={event} />
+                <EventCard
+                  key={event.eventId}
+                  event={event}
+                  onBuyIntel={!event.observedByPlayer ? handleBuyIntel : undefined}
+                  canAffordIntel={canBuyIntel(gameState, event.eventId)}
+                />
               ))}
             </div>
           </section>

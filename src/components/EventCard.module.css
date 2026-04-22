@@ -38,3 +38,24 @@
   font-size: 14px;
   line-height: 1.6;
 }
+
+.buyIntelButton {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: rgba(107, 155, 209, 0.15);
+  border: 1px solid #6b9bd1;
+  border-radius: 4px;
+  color: #6b9bd1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.buyIntelButton:hover:not(:disabled) {
+  background: rgba(107, 155, 209, 0.3);
+}
+
+.buyIntelDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
