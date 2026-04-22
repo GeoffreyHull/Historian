@@ -8,6 +8,10 @@ declare const styles: {
   section: string;
   sectionTitle: string;
   eventList: string;
+  recapContainer: string;
+  endTurnSection: string;
+  endTurnButton: string;
+  endTurnHint: string;
 };
 
 export = styles;
