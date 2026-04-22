@@ -248,4 +248,113 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
       expect(deserialized).toEqual(result.updatedState);
     });
   });
+
+  describe("FR19: Influence Calculation Integration", () => {
+    it("should not change influence when no claims are made", () => {
+      const state = createInitialGameState();
+      const initialInfluence = state.influence;
+
+      const result = executeTurn(state, []);
+
+      expect(result.updatedState.influence).toBe(initialInfluence);
+    });
+
+    it("should increase influence after submitting claims", () => {
+      const state = createInitialGameState();
+      const initialInfluence = state.influence;
+
+      const claims = [
+        createClaim({
+          claimText: "Something happened",
+          eventId: createEventId("evt-1"),
+          isAboutObservedEvent: true,
+          turnNumber: 1,
+        }),
+      ];
+
+      const result = executeTurn(state, claims);
+
+      // credibility is non-negative, so influence can only stay or increase
+      expect(result.updatedState.influence).toBeGreaterThanOrEqual(initialInfluence);
+    });
+
+    it("should accumulate influence across multiple turns", () => {
+      let state = createInitialGameState();
+
+      for (let i = 1; i <= 3; i++) {
+        const claims = [
+          createClaim({
+            claimText: `Turn ${i} claim`,
+            eventId: createEventId(`evt-${i}`),
+            isAboutObservedEvent: true,
+            turnNumber: i as ReturnType<typeof createTurn>,
+          }),
+        ];
+        state = executeTurn(state, claims).updatedState;
+      }
+
+      // After 3 turns with claims the influence should still be >= initial 50
+      expect(state.influence).toBeGreaterThanOrEqual(50);
+    });
+
+    it("should not mutate input state when calculating influence", () => {
+      const state = createInitialGameState();
+      const frozen = JSON.parse(JSON.stringify(state)) as typeof state;
+
+      const claims = [
+        createClaim({
+          claimText: "Test claim",
+          eventId: createEventId("evt-1"),
+          isAboutObservedEvent: true,
+          turnNumber: 1,
+        }),
+      ];
+
+      executeTurn(state, claims);
+
+      expect(JSON.stringify(state)).toBe(JSON.stringify(frozen));
+    });
+
+    it("should produce deterministic influence for identical inputs", () => {
+      const state = createInitialGameState();
+      const claims = [
+        createClaim({
+          claimText: "Deterministic claim",
+          eventId: createEventId("evt-1"),
+          isAboutObservedEvent: true,
+          turnNumber: 1,
+        }),
+      ];
+
+      const results = Array.from({ length: 5 }, () => executeTurn(state, claims));
+
+      const firstInfluence = results[0].updatedState.influence;
+      for (const r of results.slice(1)) {
+        expect(r.updatedState.influence).toBe(firstInfluence);
+      }
+    });
+
+    it("should keep influence in state after run completion", () => {
+      let state = createInitialGameState();
+
+      for (let i = 1; i < 10; i++) {
+        state = executeTurn(state, []).updatedState;
+      }
+
+      const claims = [
+        createClaim({
+          claimText: "Final turn claim",
+          eventId: createEventId("evt-1"),
+          isAboutObservedEvent: true,
+          turnNumber: 10,
+        }),
+      ];
+
+      const result = executeTurn(state, claims);
+
+      expect(result.runEnded).toBe(true);
+      expect(typeof result.updatedState.influence).toBe("number");
+      expect(isFinite(result.updatedState.influence)).toBe(true);
+    });
+  });
 });

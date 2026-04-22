@@ -16,7 +16,7 @@ import {
 } from "./types";
 import { EventGenerator } from "./eventGenerator";
 import { evaluateClaimsBatch } from "./credibilitySystem";
-import { calculateInfluence } from "./influenceCalculator";
+import { aggregateInfluence } from "./influenceCalculator";
 import { updateWorldStateAfterRun, evolveToNextRun } from "./worldStateManager";
 import { generateRunRecap, formatHistoryBook } from "./recapGenerator";
 import { GameManager } from "./gameManager";
@@ -75,11 +75,12 @@ export function executeTurn(
     manager.dispatch({ type: "evaluateClaims", results: credibilityResults });
   }
 
-  // Phase 4: Calculate influence (for future use; not strictly required in this phase)
-  // const influences = credibilityResults.map(result => calculateInfluence(result, gameState.currentFaction));
+  // Phase 4: Calculate influence earned this turn (FR19)
+  const influenceEarned = aggregateInfluence(credibilityResults, gameState.currentFaction);
 
-  // Get state after claim evaluation
+  // Get state after claim evaluation and apply influence
   let state = manager.getState();
+  state = { ...state, influence: state.influence + influenceEarned };
 
   // Phase 5: Check if run is complete (10 turns)
   const isRunComplete = currentTurn >= 10;
