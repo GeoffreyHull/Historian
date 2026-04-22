@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
 import { evaluateClaimsBatch } from "./game/credibilitySystem";
 import { executeTurn } from "./game/turnExecutor";
 import { Claim, Faction, GameState, RunRecap as RunRecapData } from "./game/types";
+import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
+import { buildHistoryBookData } from "./game/historyBookUtils";
 import { MainMenu } from "./components/MainMenu";
 import { EventCard } from "./components/EventCard";
 import { ClaimInput } from "./components/ClaimInput";
@@ -11,9 +13,10 @@ import { CredibilityResult } from "./components/CredibilityResult";
 import { ClaimLedger } from "./components/ClaimLedger";
 import { FactionTrust } from "./components/FactionTrust";
 import { RunRecap } from "./components/RunRecap";
+import { HistoryBook } from "./components/HistoryBook";
 import styles from "./App.module.css";
 
-type Screen = "menu" | "playing" | "recap";
+type Screen = "menu" | "playing" | "recap" | "history";
 
 function generateEventsForState(state: GameState) {
   const seed = state.worldState.initialSeed + state.turnNumber;
@@ -31,6 +34,16 @@ export const App: React.FC = () => {
   >([]);
   const [recap, setRecap] = useState<RunRecapData | null>(null);
   const [nextRunState, setNextRunState] = useState<GameState | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [hasSaved, setHasSaved] = useState<boolean>(() => checkHasSavedGame());
+  const [previousScreen, setPreviousScreen] = useState<Screen>("playing");
+
+  // Clear save message after 3 seconds
+  useEffect(() => {
+    if (!saveMessage) return;
+    const timer = setTimeout(() => setSaveMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [saveMessage]);
 
   const handleStartGame = (faction: Faction) => {
     const initial = createInitialGameState(faction);
@@ -41,6 +54,37 @@ export const App: React.FC = () => {
     setRecap(null);
     setNextRunState(null);
     setScreen("playing");
+  };
+
+  const handleContinueGame = () => {
+    const saved = loadGameState();
+    if (!saved) return;
+    const events = generateEventsForState(saved);
+    setGameState({ ...saved, events });
+    setCurrentClaims([]);
+    setCredibilityResults([]);
+    setRecap(null);
+    setNextRunState(null);
+    setScreen("playing");
+  };
+
+  const handleSaveGame = () => {
+    const success = saveGameState(gameState);
+    if (success) {
+      setSaveMessage("Game saved!");
+      setHasSaved(true);
+    } else {
+      setSaveMessage("Save failed — storage may be full");
+    }
+  };
+
+  const handleViewHistory = (fromScreen: Screen = "playing") => {
+    setPreviousScreen(fromScreen);
+    setScreen("history");
+  };
+
+  const handleBackFromHistory = () => {
+    setScreen(previousScreen);
   };
 
   const handleClaimSubmit = (claimText: string) => {
@@ -90,7 +134,44 @@ export const App: React.FC = () => {
   };
 
   if (screen === "menu") {
-    return <MainMenu onStartGame={handleStartGame} />;
+    return (
+      <MainMenu
+        onStartGame={handleStartGame}
+        onContinueGame={hasSaved ? handleContinueGame : undefined}
+      />
+    );
+  }
+
+  if (screen === "history") {
+    const historyData = buildHistoryBookData(gameState.worldState.history);
+    return (
+      <div className={styles.app}>
+        <header className={styles.header}>
+          <div className={styles.headerContent}>
+            <div>
+              <h1>Historian</h1>
+              <p className={styles.subtitle}>A game of narrative and consequence</p>
+            </div>
+            <div className={styles.headerActions}>
+              <button
+                className={styles.actionButton}
+                onClick={handleBackFromHistory}
+                aria-label="Back to game"
+              >
+                ← Back to Game
+              </button>
+            </div>
+          </div>
+        </header>
+        <div className={styles.historyScreen}>
+          <HistoryBook
+            pastRuns={historyData.pastRuns}
+            beliefTrends={historyData.beliefTrends}
+            claimFrequencies={historyData.claimFrequencies}
+          />
+        </div>
+      </div>
+    );
   }
 
   if (screen === "recap" && recap) {
@@ -103,8 +184,21 @@ export const App: React.FC = () => {
     return (
       <div className={styles.app}>
         <header className={styles.header}>
-          <h1>Historian</h1>
-          <p className={styles.subtitle}>A game of narrative and consequence</p>
+          <div className={styles.headerContent}>
+            <div>
+              <h1>Historian</h1>
+              <p className={styles.subtitle}>A game of narrative and consequence</p>
+            </div>
+            <div className={styles.headerActions}>
+              <button
+                className={styles.actionButton}
+                onClick={() => handleViewHistory("recap")}
+                aria-label="View history book"
+              >
+                📚 History Book
+              </button>
+            </div>
+          </div>
         </header>
         <div className={styles.recapContainer}>
           <RunRecap
@@ -145,8 +239,33 @@ export const App: React.FC = () => {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <h1>Historian</h1>
-        <p className={styles.subtitle}>A game of narrative and consequence</p>
+        <div className={styles.headerContent}>
+          <div>
+            <h1>Historian</h1>
+            <p className={styles.subtitle}>A game of narrative and consequence</p>
+          </div>
+          <div className={styles.headerActions}>
+            {saveMessage && (
+              <span className={styles.saveMessage} role="status" aria-live="polite">
+                {saveMessage}
+              </span>
+            )}
+            <button
+              className={styles.actionButton}
+              onClick={handleSaveGame}
+              aria-label="Save game"
+            >
+              💾 Save Game
+            </button>
+            <button
+              className={styles.actionButton}
+              onClick={() => handleViewHistory("playing")}
+              aria-label="View history book"
+            >
+              📚 History Book
+            </button>
+          </div>
+        </div>
       </header>
 
       <div className={styles.container}>

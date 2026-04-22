@@ -9,22 +9,70 @@
 .header {
   background: rgba(107, 155, 209, 0.03);
   border-bottom: 1px solid rgba(107, 155, 209, 0.1);
-  padding: 24px 32px;
-  text-align: center;
+  padding: 16px 32px;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .header h1 {
-  margin: 0 0 8px 0;
-  font-size: 32px;
+  margin: 0 0 4px 0;
+  font-size: 28px;
   font-weight: 700;
   color: #f5f5f5;
 }
 
 .subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: #a8a8a8;
   font-style: italic;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.actionButton {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #c8c8c8;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.actionButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f5f5f5;
+}
+
+.saveMessage {
+  font-size: 13px;
+  color: #7fc97a;
+  font-style: italic;
+}
+
+.historyScreen {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  width: 100%;
 }
 
 .container {
