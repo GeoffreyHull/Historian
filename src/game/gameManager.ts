@@ -6,6 +6,7 @@
 
 import { GameState, Action, Faction, TurnNumber, createTurn, WorldState } from "./types";
 import { createInitialWorldState } from "./worldStateManager";
+import { createInitialTrustMap, applyTrustDeltas } from "./factionTrustSystem";
 
 /**
  * Create initial game state.
@@ -22,6 +23,7 @@ export function createInitialGameState(
     claims: [],
     credibilityMap: {},
     influence: 50, // Start at neutral influence
+    factionTrust: createInitialTrustMap(), // All factions start at 0 trust (FR15)
     isGameOver: false,
     worldState: worldState ?? createInitialWorldState(),
   };
@@ -102,6 +104,13 @@ export class GameManager {
           ...state,
           isGameOver: true,
           worldState: action.newWorldState,
+        };
+
+      case "updateFactionTrust":
+        // FR15-FR18: Apply trust deltas immutably
+        return {
+          ...state,
+          factionTrust: applyTrustDeltas(state.factionTrust, action.deltas),
         };
 
       default:

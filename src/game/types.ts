@@ -105,6 +105,11 @@ export interface ConsequenceRecord {
 }
 
 /**
+ * FactionTrustMap: Per-faction trust values. Range: [-200, +100] per FR15.
+ */
+export type FactionTrustMap = Readonly<Record<Faction, number>>;
+
+/**
  * GameState: Complete game state, 100% JSON-serializable.
  */
 export interface GameState {
@@ -114,6 +119,7 @@ export interface GameState {
   readonly claims: readonly Claim[]; // All claims made
   readonly credibilityMap: Readonly<Record<EventId, number>>; // event -> credibility [0, 100]
   readonly influence: number; // [0, 100] current influence
+  readonly factionTrust: FactionTrustMap; // Per-faction trust [-200, +100] (FR15)
   readonly isGameOver: boolean; // Game end state
   readonly worldState: WorldState; // Persistent state across runs
 }
@@ -127,7 +133,8 @@ export type Action =
   | { type: "nextTurn" }
   | { type: "updateEvents"; events: Event[] }
   | { type: "updateWorldState"; worldState: WorldState }
-  | { type: "endRun"; newWorldState: WorldState };
+  | { type: "endRun"; newWorldState: WorldState }
+  | { type: "updateFactionTrust"; deltas: FactionTrustMap };
 
 /**
  * Reducer: Pure function for state updates.

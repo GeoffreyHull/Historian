@@ -343,10 +343,10 @@ export const App: React.FC = () => {
         <aside className={styles.sidebar}>
           <FactionTrust
             factions={[
-              { name: "historian", emoji: "📖", trust: 75 },
-              { name: "scholar", emoji: "🔬", trust: 60 },
-              { name: "witness", emoji: "👁️", trust: 80 },
-              { name: "scribe", emoji: "✍️", trust: 55 },
+              { name: "historian", emoji: "📖", trust: gameState.factionTrust.historian },
+              { name: "scholar", emoji: "🔬", trust: gameState.factionTrust.scholar },
+              { name: "witness", emoji: "👁️", trust: gameState.factionTrust.witness },
+              { name: "scribe", emoji: "✍️", trust: gameState.factionTrust.scribe },
             ]}
           />
           <ClaimLedger claims={claimLedgerItems} />
