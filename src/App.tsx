@@ -6,7 +6,8 @@ import { executeTurn } from "./game/turnExecutor";
 import { Claim, Faction, GameState, RunRecap as RunRecapData } from "./game/types";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
 import { buildHistoryBookData } from "./game/historyBookUtils";
-import { buyIntel, canBuyIntel, BUY_INTEL_COST } from "./game/influenceActions";
+import { buyIntel, canBuyIntel, BUY_INTEL_COST, forceEvent, canForceEvent, FORCE_EVENT_COST } from "./game/influenceActions";
+import { EVENT_TYPE_KEYWORDS } from "./game/constants";
 import { MainMenu } from "./components/MainMenu";
 import { EventCard } from "./components/EventCard";
 import { ClaimInput } from "./components/ClaimInput";
@@ -109,6 +110,11 @@ export const App: React.FC = () => {
 
   const handleBuyIntel = (eventId: string) => {
     const updated = buyIntel(gameState, eventId as any);
+    setGameState(updated);
+  };
+
+  const handleForceEvent = (eventType: string) => {
+    const updated = forceEvent(gameState, eventType);
     setGameState(updated);
   };
 
@@ -325,6 +331,43 @@ export const App: React.FC = () => {
               />
             </section>
           )}
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>
+              Shape Next Turn{" "}
+              <span
+                className={styles.influenceDisplay}
+                title={`Costs ${FORCE_EVENT_COST} influence to guarantee an event type next turn`}
+                aria-label={`Force event costs ${FORCE_EVENT_COST} influence`}
+              >
+                ✨ {FORCE_EVENT_COST} influence each
+              </span>
+            </h2>
+            {gameState.pendingForcedEventType ? (
+              <p className={styles.forcedEventStatus} role="status" aria-live="polite">
+                ✅ Forcing <strong>{gameState.pendingForcedEventType}</strong> event next turn
+              </p>
+            ) : (
+              <div className={styles.forceEventButtons} role="group" aria-label="Force event type for next turn">
+                {Object.keys(EVENT_TYPE_KEYWORDS).map((eventType) => (
+                  <button
+                    key={eventType}
+                    className={styles.forceEventButton}
+                    onClick={() => handleForceEvent(eventType)}
+                    disabled={!canForceEvent(gameState, eventType)}
+                    aria-label={`Force ${eventType} event next turn (costs ${FORCE_EVENT_COST} influence)`}
+                    title={
+                      gameState.influence < FORCE_EVENT_COST
+                        ? `Need ${FORCE_EVENT_COST} influence (have ${gameState.influence.toFixed(1)})`
+                        : `Guarantee a ${eventType} event next turn`
+                    }
+                  >
+                    {eventType}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
 
           <div className={styles.endTurnSection}>
             <button

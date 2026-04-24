@@ -122,6 +122,7 @@ export interface GameState {
   readonly factionTrust: FactionTrustMap; // Per-faction trust [-200, +100] (FR15)
   readonly isGameOver: boolean; // Game end state
   readonly worldState: WorldState; // Persistent state across runs
+  readonly pendingForcedEventType: string | null; // FR20: event type guaranteed next turn (null = none)
 }
 
 /**
