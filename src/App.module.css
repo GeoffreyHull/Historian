@@ -148,6 +148,48 @@
   gap: 24px;
 }
 
+.gameOverContainer {
+  max-width: 600px;
+  margin: 60px auto;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: rgba(180, 60, 60, 0.08);
+  border: 1px solid rgba(180, 60, 60, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.gameOverTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #c97070;
+  margin: 0;
+  letter-spacing: 0.05em;
+}
+
+.gameOverMessage {
+  font-size: 1.05rem;
+  color: #ccc;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.gameOverFactions {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin: 0;
+}
+
+.gameOverTurn {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
+  font-style: italic;
+}
+
 .endTurnSection {
   display: flex;
   flex-direction: column;

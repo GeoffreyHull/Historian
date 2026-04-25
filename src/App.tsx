@@ -18,7 +18,7 @@ import { RunRecap } from "./components/RunRecap";
 import { HistoryBook } from "./components/HistoryBook";
 import styles from "./App.module.css";
 
-type Screen = "menu" | "playing" | "recap" | "history";
+type Screen = "menu" | "playing" | "recap" | "history" | "game_over";
 
 function generateEventsForState(state: GameState) {
   const seed = state.worldState.initialSeed + state.turnNumber;
@@ -121,7 +121,11 @@ export const App: React.FC = () => {
   const handleEndTurn = () => {
     const result = executeTurn(gameState, currentClaims);
 
-    if (result.runEnded && result.recap) {
+    if (result.updatedState.isGameOver && !result.runEnded) {
+      // FR18 auto-loss: all factions refused mid-run — show game over screen
+      setGameState(result.updatedState);
+      setScreen("game_over");
+    } else if (result.runEnded && result.recap) {
       setRecap(result.recap);
       setNextRunState(result.updatedState);
       setScreen("recap");
@@ -131,6 +135,15 @@ export const App: React.FC = () => {
       setCurrentClaims([]);
       setCredibilityResults([]);
     }
+  };
+
+  const handleGameOverRestart = () => {
+    setGameState(createInitialGameState());
+    setCurrentClaims([]);
+    setCredibilityResults([]);
+    setRecap(null);
+    setNextRunState(null);
+    setScreen("menu");
   };
 
   const handleContinueAfterRecap = () => {
@@ -151,6 +164,46 @@ export const App: React.FC = () => {
         onStartGame={handleStartGame}
         onContinueGame={hasSaved ? handleContinueGame : undefined}
       />
+    );
+  }
+
+  if (screen === "game_over") {
+    const refusingFactions = Object.entries(gameState.factionTrust)
+      .filter(([, trust]) => trust <= -100)
+      .map(([name]) => name);
+    return (
+      <div className={styles.app}>
+        <header className={styles.header}>
+          <div className={styles.headerContent}>
+            <div>
+              <h1>Historian</h1>
+              <p className={styles.subtitle}>A game of narrative and consequence</p>
+            </div>
+          </div>
+        </header>
+        <div className={styles.gameOverContainer}>
+          <h2 className={styles.gameOverTitle}>The Chronicle Ends</h2>
+          <p className={styles.gameOverMessage}>
+            All factions have lost faith in your chronicle. No one will buy your next book.
+          </p>
+          {refusingFactions.length > 0 && (
+            <p className={styles.gameOverFactions}>
+              Factions who refused:{" "}
+              <strong>{refusingFactions.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join(", ")}</strong>
+            </p>
+          )}
+          <p className={styles.gameOverTurn}>
+            Survived {gameState.turnNumber - 1} turn{gameState.turnNumber - 1 !== 1 ? "s" : ""} of Run {gameState.worldState.runNumber}
+          </p>
+          <button
+            className={styles.endTurnButton}
+            onClick={handleGameOverRestart}
+            data-testid="game-over-restart"
+          >
+            Return to Main Menu
+          </button>
+        </div>
+      </div>
     );
   }
 
