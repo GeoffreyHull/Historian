@@ -17,6 +17,7 @@ import {
   createEventId,
   createTurn,
 } from "../types";
+import { golden } from "./utils/golden";
 
 describe("[G] Turn Executor - Epic 6 Tests", () => {
   describe("AC5: Immutability & Purity", () => {
@@ -355,6 +356,93 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
       expect(result.runEnded).toBe(true);
       expect(typeof result.updatedState.influence).toBe("number");
       expect(isFinite(result.updatedState.influence)).toBe(true);
+    });
+  });
+
+  describe("FR17-FR18: Game Over / Loss Condition", () => {
+    golden("should set isGameOver when all factions refuse (trust < -100)", () => {
+      const allRefusingTrust = {
+        historian: -150,
+        scholar: -150,
+        witness: -150,
+        scribe: -150,
+      };
+      const state = {
+        ...createInitialGameState(),
+        factionTrust: allRefusingTrust,
+      };
+
+      const result = executeTurn(state, []);
+
+      expect(result.updatedState.isGameOver).toBe(true);
+      expect(result.runEnded).toBe(false);
+    });
+
+    it("should not set isGameOver when only some factions refuse", () => {
+      const partialRefuseTrust = {
+        historian: -150,
+        scholar: 10,
+        witness: 10,
+        scribe: 10,
+      };
+      const state = {
+        ...createInitialGameState(),
+        factionTrust: partialRefuseTrust,
+      };
+
+      const result = executeTurn(state, []);
+
+      expect(result.updatedState.isGameOver).toBe(false);
+    });
+
+    it("should preserve isGameOver=false when no auto-loss", () => {
+      const state = createInitialGameState();
+      const result = executeTurn(state, []);
+      expect(result.updatedState.isGameOver).toBe(false);
+    });
+  });
+
+  describe("State Persistence Across Turns", () => {
+    golden("should preserve faction trust updates across turns (not reset by manager state)", () => {
+      const startingTrust = {
+        historian: -50,
+        scholar: -50,
+        witness: -50,
+        scribe: -50,
+      };
+      const state = {
+        ...createInitialGameState(),
+        factionTrust: startingTrust,
+      };
+
+      // Execute 2 turns without claims (trust deltas should be ~0 with no credibility results)
+      const result1 = executeTurn(state, []);
+      const result2 = executeTurn(result1.updatedState, []);
+
+      // Trust should persist (not reset to initial 0) across turns
+      expect(result1.updatedState.factionTrust.historian).toBe(startingTrust.historian);
+      expect(result2.updatedState.factionTrust.historian).toBe(startingTrust.historian);
+    });
+
+    golden("should preserve influence updates across turns (not reset by manager state)", () => {
+      const state = { ...createInitialGameState(), influence: 10 };
+
+      const result = executeTurn(state, []);
+
+      // Influence should persist at 10 (no claims = no influence earned)
+      expect(result.updatedState.influence).toBe(10);
+    });
+
+    it("should clear pendingForcedEventType after turn executes", () => {
+      const state = {
+        ...createInitialGameState(),
+        pendingForcedEventType: "weather",
+        influence: 100,
+      };
+
+      const result = executeTurn(state, []);
+
+      expect(result.updatedState.pendingForcedEventType).toBeNull();
     });
   });
 });

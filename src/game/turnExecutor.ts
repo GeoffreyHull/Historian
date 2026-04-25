@@ -146,9 +146,11 @@ export function executeTurn(
       recap,
     };
   } else {
-    // Phase 8: Advance turn for next turn
-    manager.dispatch({ type: "nextTurn" });
-    state = manager.getState();
+    // Phase 8: Advance turn — preserve all state updates (influence, trust, isGameOver)
+    // by incrementing turnNumber directly instead of fetching from the manager, which
+    // was never updated with our influence/trust/isGameOver changes above.
+    const nextTurn = (currentTurn + 1) as TurnNumber;
+    state = { ...state, turnNumber: nextTurn, claims: [] };
 
     return {
       updatedState: state,
