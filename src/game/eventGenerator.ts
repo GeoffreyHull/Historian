@@ -82,8 +82,9 @@ export class EventGenerator {
 
   /**
    * Generate events for a turn, optionally influenced by faction beliefs.
+   * If forcedEventType is provided, the first event is guaranteed to be that type (FR20).
    */
-  generateEvents(turnNumber: TurnNumber, count: number = 3): Event[] {
+  generateEvents(turnNumber: TurnNumber, count: number = 3, forcedEventType?: string | null): Event[] {
     const events: Event[] = [];
 
     // Get faction belief influence if world state is set
@@ -97,8 +98,12 @@ export class EventGenerator {
       : [];
 
     for (let i = 0; i < count; i++) {
-      // Pick event type, weighted by faction beliefs
-      const eventType = this.pickWeightedEventType(beliefInfluence);
+      // FR20: first event uses forced type if specified; remaining use weighted selection
+      const eventType =
+        i === 0 && forcedEventType
+          ? forcedEventType
+          : this.pickWeightedEventType(beliefInfluence);
+
       let description = this.rng.pick(EVENT_DESCRIPTIONS_BY_TYPE[eventType] || []);
 
       // Optionally add consequence reference to description

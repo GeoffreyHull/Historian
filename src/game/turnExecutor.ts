@@ -55,9 +55,9 @@ export function executeTurn(
   const deterministicSeed = gameState.worldState.initialSeed + currentTurn;
   const eventGenerator = new EventGenerator(deterministicSeed);
 
-  // Phase 1: Generate events for this turn
+  // Phase 1: Generate events for this turn (FR20: honour any pending forced event type)
   eventGenerator.setWorldState(gameState.worldState, gameState.currentFaction);
-  const events = eventGenerator.generateEvents(currentTurn, 3);
+  const events = eventGenerator.generateEvents(currentTurn, 3, gameState.pendingForcedEventType);
 
   // Phase 2: Observation is already determined (set in events)
   // No changes needed; EventGenerator sets observedByPlayer
@@ -86,7 +86,8 @@ export function executeTurn(
   // Phase 4b: Update faction trust based on credibility results (FR15-FR18)
   const trustDeltas = computeTrustDeltas(credibilityResults, gameState.currentFaction);
   const updatedTrust = applyTrustDeltas(state.factionTrust, trustDeltas);
-  state = { ...state, factionTrust: updatedTrust };
+  // FR20: clear pending forced event type — it was consumed when generating this turn's events
+  state = { ...state, factionTrust: updatedTrust, pendingForcedEventType: null };
 
   // FR18: Auto-loss if all factions refuse (trust < -100)
   if (isAutoLoss(state.factionTrust)) {
@@ -134,6 +135,7 @@ export function executeTurn(
       factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0 },
       worldState: worldStateWithRecap,
       isGameOver: false,
+      pendingForcedEventType: null, // FR20: clear on run reset
     };
 
     return {

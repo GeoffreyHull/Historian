@@ -64,6 +64,14 @@ export function validateGameState(obj: unknown): GameState | null {
     return null;
   }
 
+  // FR20: pendingForcedEventType is optional for backward compatibility with older saves
+  if (state.pendingForcedEventType !== undefined &&
+      state.pendingForcedEventType !== null &&
+      typeof state.pendingForcedEventType !== 'string') {
+    console.error('Invalid pendingForcedEventType in saved game:', state.pendingForcedEventType);
+    return null;
+  }
+
   // Passed all checks; return as validated GameState
   return obj as GameState;
 }
@@ -116,6 +124,17 @@ export function saveGameState(state: GameState): boolean {
 }
 
 /**
+ * ApplyMigrations: Backfill fields added after initial release so old saves remain playable.
+ */
+function applyMigrations(state: GameState): GameState {
+  // FR20 field added post-launch; default to null for saves that predate it
+  if ((state as any).pendingForcedEventType === undefined) {
+    return { ...state, pendingForcedEventType: null };
+  }
+  return state;
+}
+
+/**
  * LoadGameState: Restore game state from localStorage with validation.
  * Tries primary storage first, falls back to backup on corruption.
  * Constraint 5: Validates GameState fields after JSON.parse (prevents silent data loss).
@@ -129,7 +148,7 @@ export function loadGameState(): GameState | null {
       const parsed = JSON.parse(primary);
       const validated = validateGameState(parsed);
       if (validated) {
-        return validated;
+        return applyMigrations(validated);
       }
       console.warn("Primary save corrupted; attempting backup recovery");
     }
@@ -141,7 +160,7 @@ export function loadGameState(): GameState | null {
       const validated = validateGameState(parsed);
       if (validated) {
         console.warn("Loaded from backup due to primary corruption");
-        return validated;
+        return applyMigrations(validated);
       }
       console.error("Both primary and backup saves are corrupted; cannot recover");
     }

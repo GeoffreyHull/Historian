@@ -26,6 +26,7 @@ export function createInitialGameState(
     factionTrust: createInitialTrustMap(), // All factions start at 0 trust (FR15)
     isGameOver: false,
     worldState: worldState ?? createInitialWorldState(),
+    pendingForcedEventType: null, // FR20: no forced event pending at start
   };
 }
 
