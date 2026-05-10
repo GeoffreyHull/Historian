@@ -21,6 +21,9 @@ export interface BeliefTrend {
   readonly scholar: number;
   readonly witness: number;
   readonly scribe: number;
+  readonly diplomat: number;
+  readonly rebel: number;
+  readonly merchant: number;
 }
 
 export interface ClaimFrequency {
@@ -67,6 +70,9 @@ export function buildHistoryBookData(history: readonly RunRecap[]): HistoryBookD
       scholar: Math.min(100, 48 + base * 7),
       witness: Math.min(100, 52 + base * 9),
       scribe: Math.min(100, 46 + base * 6),
+      diplomat: Math.min(100, 50 + base * 7),
+      rebel: Math.min(100, 44 + base * 8),
+      merchant: Math.min(100, 54 + base * 6),
     };
   });
 

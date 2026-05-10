@@ -7,7 +7,7 @@
 export type EventId = string & { readonly __brand: "EventId" };
 export type TurnNumber = number;
 export type TruthValue = "true" | "false";
-export type Faction = "historian" | "scholar" | "witness" | "scribe";
+export type Faction = "historian" | "scholar" | "witness" | "scribe" | "diplomat" | "rebel" | "merchant";
 
 export const createEventId = (id: string): EventId => id as EventId;
 export const createTurn = (turn: number): TurnNumber => turn;
@@ -70,6 +70,17 @@ export interface FactionBelief {
 }
 
 /**
+ * WorldVariables: Aggregate state of the world tracked across runs.
+ * Each variable is 0-100. Events affect these values, which in turn
+ * influence future event probabilities (cascading consequences).
+ */
+export interface WorldVariables {
+  readonly morale: number; // 0-100: Population satisfaction, hope, will to continue
+  readonly infrastructure: number; // 0-100: Physical state of roads, walls, buildings
+  readonly economy: number; // 0-100: Economic health, trade, treasury
+}
+
+/**
  * WorldState: Persistent state across runs. Shaped by player claims and consequences.
  */
 export interface WorldState {
@@ -79,6 +90,7 @@ export interface WorldState {
   readonly consequences: readonly ConsequenceRecord[]; // Events triggered by past claims
   readonly lastUpdateTurn: TurnNumber; // When world state was last updated
   readonly history: readonly RunRecap[]; // Accumulated recaps from all completed runs
+  readonly worldVariables: WorldVariables; // Aggregate world state (Phase 2)
 }
 
 /**
@@ -107,7 +119,21 @@ export interface ConsequenceRecord {
 /**
  * FactionTrustMap: Per-faction trust values. Range: [-200, +100] per FR15.
  */
-export type FactionTrustMap = Readonly<Record<Faction, number>>;
+export type FactionTrustMap = Readonly<Record<string, number>>;
+
+/**
+ * TurnSnapshot: Saved state snapshot at the start of a turn, before claims.
+ * Used by the retcon mechanic to rewind and replace claims.
+ */
+export interface TurnSnapshot {
+  readonly turnNumber: TurnNumber;
+  readonly events: readonly Event[];
+  readonly claims: readonly Claim[];
+  readonly influence: number;
+  readonly factionTrust: FactionTrustMap;
+  readonly credibilityMap: Readonly<Record<EventId, number>>;
+  readonly worldState: WorldState;
+}
 
 /**
  * GameState: Complete game state, 100% JSON-serializable.
@@ -123,6 +149,7 @@ export interface GameState {
   readonly isGameOver: boolean; // Game end state
   readonly worldState: WorldState; // Persistent state across runs
   readonly pendingForcedEventType: string | null; // FR20: event type guaranteed next turn (null = none)
+  readonly turnSnapshots: readonly TurnSnapshot[]; // History of turn snapshots for retcon
 }
 
 /**

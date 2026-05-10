@@ -5,6 +5,7 @@
 import { golden } from "./utils/golden";
 import { EventGenerator } from "../eventGenerator";
 import { SeededRNG } from "../rng";
+import { EVENT_TYPE_KEYWORDS } from "../constants";
 
 describe("SeededRNG", () => {
   golden("should produce identical sequences with same seed", () => {
@@ -85,14 +86,7 @@ describe("EventGenerator", () => {
     const gen = new EventGenerator(42);
     const events = gen.generateEvents(1 as any, 10);
 
-    const validTypes = [
-      "weather",
-      "location",
-      "character",
-      "conversation",
-      "action",
-      "discovery",
-    ];
+    const validTypes = Object.keys(EVENT_TYPE_KEYWORDS);
     expect(events.every((e) => validTypes.includes(e.eventType))).toBe(true);
   });
 

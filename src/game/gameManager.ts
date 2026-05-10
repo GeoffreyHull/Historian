@@ -22,11 +22,12 @@ export function createInitialGameState(
     events: [],
     claims: [],
     credibilityMap: {},
-    influence: 50, // Start at neutral influence
-    factionTrust: createInitialTrustMap(), // All factions start at 0 trust (FR15)
+    influence: 50,
+    factionTrust: createInitialTrustMap(),
     isGameOver: false,
     worldState: worldState ?? createInitialWorldState(),
-    pendingForcedEventType: null, // FR20: no forced event pending at start
+    pendingForcedEventType: null,
+    turnSnapshots: [],
   };
 }
 

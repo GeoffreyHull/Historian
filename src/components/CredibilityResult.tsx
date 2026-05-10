@@ -13,7 +13,7 @@ import React from "react";
 import styles from "./CredibilityResult.module.css";
 
 interface FactionScore {
-  name: "historian" | "scholar" | "witness" | "scribe";
+  name: string;
   emoji: string;
   score: number;
 }

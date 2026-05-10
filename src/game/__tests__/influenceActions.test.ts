@@ -15,9 +15,10 @@ import { golden } from "./utils/golden";
 import {
   canBuyIntel, buyIntel, BUY_INTEL_COST,
   canForceEvent, forceEvent, FORCE_EVENT_COST,
+  canRetcon, retcon, RETCON_COST,
 } from "../influenceActions";
 import { createInitialGameState } from "../gameManager";
-import { GameState, Event, EventId, createEventId } from "../types";
+import { GameState, Event, EventId, createEventId, createTurn } from "../types";
 import { WEATHER_RAIN, WEATHER_WIND, LOCATION_CASTLE } from "./fixtures/events";
 
 // ---------------------------------------------------------------------------
@@ -364,5 +365,160 @@ describe("FORCE_EVENT_COST", () => {
 
   it("should be more expensive than BUY_INTEL_COST (more strategic)", () => {
     expect(FORCE_EVENT_COST).toBeGreaterThanOrEqual(BUY_INTEL_COST);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Retcon
+// ---------------------------------------------------------------------------
+
+describe("retcon", () => {
+  function makeRetconState(overrides: Partial<GameState> = {}): GameState {
+    const base = createInitialGameState("historian");
+    return {
+      ...base,
+      influence: 20,
+      turnSnapshots: [
+        {
+          turnNumber: createTurn(1),
+          events: [WEATHER_RAIN],
+          claims: [],
+          influence: 50,
+          factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0, diplomat: 0, rebel: 0, merchant: 0 },
+          credibilityMap: {},
+          worldState: base.worldState,
+        },
+        {
+          turnNumber: createTurn(2),
+          events: [WEATHER_WIND],
+          claims: [],
+          influence: 50,
+          factionTrust: { historian: 5, scholar: 5, witness: 5, scribe: 5, diplomat: 0, rebel: 0, merchant: 0 },
+          credibilityMap: {},
+          worldState: base.worldState,
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  describe("canRetcon", () => {
+    it("should return true when enough influence and valid past turn", () => {
+      const state = makeRetconState({ influence: RETCON_COST, turnNumber: createTurn(4) });
+      const result = canRetcon(state, createTurn(2));
+      expect(result).toBe(true);
+    });
+
+    it("should return false when influence is less than cost", () => {
+      const state = makeRetconState({ influence: RETCON_COST - 1, turnNumber: createTurn(4) });
+      const result = canRetcon(state, createTurn(2));
+      expect(result).toBe(false);
+    });
+
+    it("should return false when target turn is current turn", () => {
+      const state = makeRetconState({ influence: 20, turnNumber: createTurn(2) });
+      const result = canRetcon(state, createTurn(2));
+      expect(result).toBe(false);
+    });
+
+    it("should return false when target turn is in the future", () => {
+      const state = makeRetconState({ influence: 20, turnNumber: createTurn(2) });
+      const result = canRetcon(state, createTurn(5));
+      expect(result).toBe(false);
+    });
+
+    it("should return false when no snapshots exist", () => {
+      const state = { ...makeRetconState(), turnSnapshots: [], turnNumber: createTurn(2) };
+      const result = canRetcon(state, createTurn(1));
+      expect(result).toBe(false);
+    });
+
+    it("should return false when target snapshots does not exist", () => {
+      const state = makeRetconState({ influence: 20, turnNumber: createTurn(4) });
+      const result = canRetcon(state, createTurn(3));
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("retcon", () => {
+    it("should deduct RETCON_COST from influence", () => {
+      const state = makeRetconState({ influence: 20, turnNumber: createTurn(4) });
+      const result = retcon(state, createTurn(2));
+      expect(result.influence).toBe(20 - RETCON_COST);
+    });
+
+    it("should restore state to the targeted snapshot turn", () => {
+      const state = makeRetconState({ turnNumber: createTurn(4) });
+      const result = retcon(state, createTurn(2));
+      expect(result.turnNumber).toBe(2);
+      expect(result.events).toEqual([WEATHER_WIND]);
+      expect(result.claims).toEqual([]);
+    });
+
+    it("should restore trust from the snapshot", () => {
+      const state = makeRetconState({ turnNumber: createTurn(4) });
+      const result = retcon(state, createTurn(2));
+      expect(result.factionTrust.historian).toBe(5);
+    });
+
+    it("should return original state unchanged when influence is insufficient", () => {
+      const state = makeRetconState({ influence: RETCON_COST - 1, turnNumber: createTurn(4) });
+      const result = retcon(state, createTurn(2));
+      expect(result).toBe(state);
+    });
+
+    it("should return original state unchanged when target turn has no snapshot", () => {
+      const state = makeRetconState({ turnNumber: createTurn(5), turnSnapshots: [] });
+      const result = retcon(state, createTurn(1));
+      expect(result).toBe(state);
+    });
+
+    it("should clear pendingForcedEventType after retcon", () => {
+      const state = makeRetconState({
+        turnNumber: createTurn(4),
+        pendingForcedEventType: "weather",
+      });
+      const result = retcon(state, createTurn(2));
+      expect(result.pendingForcedEventType).toBeNull();
+    });
+
+    it("should clear claims after retcon (player rewrites them)", () => {
+      const state = makeRetconState({
+        turnNumber: createTurn(4),
+        claims: [{ claimText: "old claim", eventId: createEventId("evt-1"), isAboutObservedEvent: true, turnNumber: 3 } as any],
+      });
+      const result = retcon(state, createTurn(2));
+      expect(result.claims).toEqual([]);
+    });
+
+    golden("retcon should not mutate the input GameState", () => {
+      const state = makeRetconState({ influence: 20, turnNumber: createTurn(4) });
+      const frozen = JSON.parse(JSON.stringify(state));
+      retcon(state, createTurn(2));
+      expect(JSON.stringify(state)).toBe(JSON.stringify(frozen));
+    });
+
+    golden("retcon is deterministic for the same inputs", () => {
+      const state = makeRetconState({ influence: 20, turnNumber: createTurn(4) });
+      const r1 = retcon(state, createTurn(2));
+      const r2 = retcon(state, createTurn(2));
+      expect(JSON.stringify(r1)).toBe(JSON.stringify(r2));
+    });
+
+    it("should allow retcon to turn 1", () => {
+      const state = makeRetconState({ turnNumber: createTurn(5) });
+      const result = retcon(state, createTurn(1));
+      expect(result.turnNumber).toBe(1);
+    });
+  });
+
+  describe("RETCON_COST", () => {
+    it("should be a positive number", () => {
+      expect(RETCON_COST).toBeGreaterThan(0);
+    });
+
+    it("should be more expensive than FORCE_EVENT_COST (more strategic)", () => {
+      expect(RETCON_COST).toBeGreaterThan(FORCE_EVENT_COST);
+    });
   });
 });

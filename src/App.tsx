@@ -14,6 +14,7 @@ import { ClaimInput } from "./components/ClaimInput";
 import { CredibilityResult } from "./components/CredibilityResult";
 import { ClaimLedger } from "./components/ClaimLedger";
 import { FactionTrust } from "./components/FactionTrust";
+import { WorldVariables } from "./components/WorldVariables";
 import { RunRecap } from "./components/RunRecap";
 import { HistoryBook } from "./components/HistoryBook";
 import styles from "./App.module.css";
@@ -272,7 +273,7 @@ export const App: React.FC = () => {
             claimAnchors={claimAnchors}
             turnsCompleted={10}
             totalClaimsMade={recap.majorClaims.length}
-            finalFactionOutcomes={{ historian: 75, scholar: 60, witness: 80, scribe: 55 }}
+            finalFactionOutcomes={{ historian: 75, scholar: 60, witness: 80, scribe: 55, diplomat: 70, rebel: 45, merchant: 65 }}
           />
           <div className={styles.endTurnSection}>
             <button className={styles.endTurnButton} onClick={handleContinueAfterRecap}>
@@ -379,6 +380,9 @@ export const App: React.FC = () => {
                   { name: "scholar", emoji: "🔬", score: Math.max(0, averageCredibility - 10) },
                   { name: "witness", emoji: "👁️", score: Math.max(0, averageCredibility - 5) },
                   { name: "scribe", emoji: "✍️", score: Math.max(0, averageCredibility - 8) },
+                  { name: "diplomat", emoji: "🤝", score: Math.max(0, averageCredibility - 6) },
+                  { name: "rebel", emoji: "⚡", score: Math.max(0, averageCredibility - 12) },
+                  { name: "merchant", emoji: "💰", score: Math.max(0, averageCredibility - 3) },
                 ]}
                 finalCredibility={averageCredibility}
               />
@@ -437,12 +441,16 @@ export const App: React.FC = () => {
         </main>
 
         <aside className={styles.sidebar}>
+          <WorldVariables variables={gameState.worldState.worldVariables} />
           <FactionTrust
             factions={[
               { name: "historian", emoji: "📖", trust: gameState.factionTrust.historian },
               { name: "scholar", emoji: "🔬", trust: gameState.factionTrust.scholar },
               { name: "witness", emoji: "👁️", trust: gameState.factionTrust.witness },
               { name: "scribe", emoji: "✍️", trust: gameState.factionTrust.scribe },
+              { name: "diplomat", emoji: "🤝", trust: gameState.factionTrust.diplomat },
+              { name: "rebel", emoji: "⚡", trust: gameState.factionTrust.rebel },
+              { name: "merchant", emoji: "💰", trust: gameState.factionTrust.merchant },
             ]}
           />
           <ClaimLedger claims={claimLedgerItems} />

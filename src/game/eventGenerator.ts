@@ -8,7 +8,7 @@
 import { Event, EventId, TurnNumber, TruthValue, createEventId, Faction } from "./types";
 import { SeededRNG } from "./rng";
 import { EVENT_TYPE_KEYWORDS } from "./constants";
-import { getFactionBeliefInfluence, getConsequenceTexts } from "./worldStateManager";
+import { getFactionBeliefInfluence, getConsequenceTexts, getWorldVariableEventWeights } from "./worldStateManager";
 import type { WorldState } from "./types";
 
 const EVENT_TYPES = Object.keys(EVENT_TYPE_KEYWORDS);
@@ -56,6 +56,174 @@ const EVENT_DESCRIPTIONS_BY_TYPE: Record<string, string[]> = {
     "Something unexpected happened",
     "A revelation occurred",
   ],
+  embargo: [
+    "Trade routes were severed",
+    "A blockade was enforced",
+    "Sanctions were declared",
+    "Markets closed their gates",
+    "The treasury halted foreign exchange",
+  ],
+  rebellion: [
+    "The people rose in defiance",
+    "Whispers of revolt spread",
+    "A coup was attempted",
+    "Insurrection flared in the streets",
+    "The loyalists routed the uprising",
+  ],
+  plague: [
+    "A sickness crept through the city",
+    "The pestilence claimed many souls",
+    "An outbreak spread unchecked",
+    "The infirmaries overflowed",
+    "A strange disease appeared",
+  ],
+  trade: [
+    "A caravan arrived with rare goods",
+    "The market bustled with activity",
+    "Merchants struck a lucrative deal",
+    "Goods were exchanged at the fair",
+    "A trade route was established",
+  ],
+  diplomacy: [
+    "An envoy delivered a message",
+    "A treaty was signed",
+    "An alliance was proposed",
+    "Negotiations began",
+    "A pact was sealed",
+  ],
+  military: [
+    "The army marched at dawn",
+    "A siege encirled the fortress",
+    "A great battle was joined",
+    "The garrison stood watch",
+    "A campaign was launched",
+  ],
+  religion: [
+    "A temple was consecrated",
+    "A sacred ritual was performed",
+    "Heresy was denounced",
+    "A schism divided the faithful",
+    "A pilgrimage began",
+  ],
+  culture: [
+    "A festival brought joy",
+    "A tradition was observed",
+    "A masterpiece of art was unveiled",
+    "Music filled the halls",
+    "A theatrical performance captivated",
+  ],
+  economy: [
+    "The royal mint issued new coin",
+    "Taxes were levied",
+    "The treasury was counted",
+    "Debts were called due",
+    "Inflation gripped the markets",
+  ],
+  infrastructure: [
+    "A new road was completed",
+    "A bridge was built",
+    "The harbor was expanded",
+    "The city wall was reinforced",
+    "An aqueduct channeled fresh water",
+  ],
+  intrigue: [
+    "A conspiracy was uncovered",
+    "A betrayal shook the court",
+    "Espionage was detected",
+    "An assassination was foiled",
+    "Blackmail threatened the noble",
+  ],
+  migration: [
+    "A great exodus began",
+    "Refugees sought shelter",
+    "A settlement was founded",
+    "Nomads arrived at the gates",
+    "A resettlement was organized",
+  ],
+  magic: [
+    "An omen appeared in the sky",
+    "A curse befell the land",
+    "A prophecy was spoken",
+    "An enchantment was woven",
+    "A ritual summoned strange forces",
+  ],
+  disaster: [
+    "The earth trembled violently",
+    "A famine gripped the region",
+    "Floodwaters rose",
+    "A wildfire consumed the forest",
+    "A drought parched the fields",
+  ],
+  innovation: [
+    "A new invention was revealed",
+    "A discovery changed understanding",
+    "A breakthrough was achieved",
+    "A master craft was displayed",
+    "An engineering marvel was built",
+  ],
+  exploration: [
+    "An expedition set forth",
+    "A voyage to unknown lands began",
+    "A frontier was charted",
+    "A cartographer surveyed new ground",
+    "A survey revealed hidden terrain",
+  ],
+  justice: [
+    "A trial was held",
+    "A verdict was delivered",
+    "A decree was proclaimed",
+    "A new law was enacted",
+    "A sentence was passed",
+  ],
+  education: [
+    "An academy was founded",
+    "A rare manuscript was copied",
+    "A library was opened",
+    "A scholar arrived to teach",
+    "A curriculum was established",
+  ],
+  romance: [
+    "A courtship was announced",
+    "A marriage united the houses",
+    "A scandal erupted",
+    "An alliance was sealed with love",
+    "An affair was revealed",
+  ],
+  succession: [
+    "An heir was born",
+    "A throne was claimed",
+    "A dynasty continued",
+    "A coronation was held",
+    "A regent was appointed",
+  ],
+  naval: [
+    "A fleet set sail",
+    "A ship was launched",
+    "Pirates raided the coast",
+    "The navy patrolled the waters",
+    "A coastal fort was manned",
+  ],
+  agriculture: [
+    "The harvest was bountiful",
+    "Crops withered in the fields",
+    "A new crop was planted",
+    "Livestock multiplied",
+    "Irrigation channels were dug",
+  ],
+  mining: [
+    "A mine was opened",
+    "A quarry yielded fine stone",
+    "Ore was smelted",
+    "Deep excavation revealed veins",
+    "A rich seam was discovered",
+  ],
+  hunting: [
+    "A great hunt was organized",
+    "Game was plentiful in the woods",
+    "Poachers were caught",
+    "The wilds were explored for game",
+    "A tracking expedition returned",
+  ],
 };
 
 /**
@@ -92,6 +260,11 @@ export class EventGenerator {
       ? getFactionBeliefInfluence(this.worldState, this.currentFaction!, turnNumber)
       : {};
 
+    // Get world variable weights for cascading consequence influence
+    const variableWeights = this.worldState
+      ? getWorldVariableEventWeights(this.worldState.worldVariables)
+      : {};
+
     // Get consequence texts for description enrichment
     const consequenceTexts = this.worldState
       ? getConsequenceTexts(this.worldState, turnNumber)
@@ -102,7 +275,7 @@ export class EventGenerator {
       const eventType =
         i === 0 && forcedEventType
           ? forcedEventType
-          : this.pickWeightedEventType(beliefInfluence);
+          : this.pickWeightedEventType(beliefInfluence, variableWeights);
 
       let description = this.rng.pick(EVENT_DESCRIPTIONS_BY_TYPE[eventType] || []);
 
@@ -135,16 +308,20 @@ export class EventGenerator {
    * Pick an event type weighted by faction beliefs.
    */
   private pickWeightedEventType(
-    beliefInfluence: Readonly<Record<string, number>>
+    beliefInfluence: Readonly<Record<string, number>>,
+    variableWeights: Readonly<Record<string, number>>
   ): string {
     if (Object.keys(beliefInfluence).length === 0) {
-      // No beliefs, use uniform distribution
       return this.rng.pick(EVENT_TYPES);
     }
 
-    // Weighted random selection based on belief influence
+    // Combine belief influence with variable weights multiplicatively
     const types = EVENT_TYPES;
-    const weights = types.map((t) => beliefInfluence[t] || 1.0);
+    const weights = types.map((t) => {
+      const belief = beliefInfluence[t] || 1.0;
+      const variable = variableWeights[t] || 1.0;
+      return belief * variable;
+    });
 
     // Normalize weights
     const sum = weights.reduce((a, b) => a + b, 0);

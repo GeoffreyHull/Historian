@@ -6,6 +6,7 @@
 
 import {
   WorldState,
+  WorldVariables,
   FactionBelief,
   ConsequenceRecord,
   Claim,
@@ -15,7 +16,14 @@ import {
   TurnNumber,
   CredibilityResult,
 } from "./types";
-import { EVENT_TYPE_KEYWORDS } from "./constants";
+import {
+  EVENT_TYPE_KEYWORDS,
+  EVENT_VARIABLE_EFFECTS,
+  VARIABLE_EVENT_BOOSTS,
+  LOW_VARIABLE_THRESHOLD,
+  HIGH_VARIABLE_THRESHOLD,
+  DEFAULT_VARIABLE_VALUE,
+} from "./constants";
 
 /**
  * Create initial world state for run 1.
@@ -23,18 +31,25 @@ import { EVENT_TYPE_KEYWORDS } from "./constants";
  * FR46-FR47: Same seed ensures identical event sequences on resumption.
  */
 export function createInitialWorldState(initialSeed: number = Math.floor(Math.random() * 1000000)): WorldState {
+  const factionList: readonly Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
+  const factionBeliefs = Object.fromEntries(
+    factionList.map((f) => [f, [] as readonly FactionBelief[]])
+  ) as unknown as Record<Faction, readonly FactionBelief[]>;
+
+  const initialVariables: WorldVariables = {
+    morale: DEFAULT_VARIABLE_VALUE,
+    infrastructure: DEFAULT_VARIABLE_VALUE,
+    economy: DEFAULT_VARIABLE_VALUE,
+  };
+
   return {
     initialSeed,
     runNumber: 1,
-    factionBeliefs: {
-      historian: [],
-      scholar: [],
-      witness: [],
-      scribe: [],
-    },
+    factionBeliefs,
     consequences: [],
     lastUpdateTurn: 0,
     history: [],
+    worldVariables: initialVariables,
   };
 }
 
@@ -56,11 +71,17 @@ export function evolveToNextRun(
     .filter((c) => c.intensity > 0.1); // Remove negligible consequences
 
   // Decay faction beliefs: reduce weight by decay rate
-  const decayedBeliefs: Record<Faction, readonly FactionBelief[]> = {
-    historian: decayFactionBeliefs(currentWorldState.factionBeliefs.historian),
-    scholar: decayFactionBeliefs(currentWorldState.factionBeliefs.scholar),
-    witness: decayFactionBeliefs(currentWorldState.factionBeliefs.witness),
-    scribe: decayFactionBeliefs(currentWorldState.factionBeliefs.scribe),
+  const factionList: Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
+  const decayedBeliefs: Record<Faction, readonly FactionBelief[]> = Object.fromEntries(
+    factionList.map((f) => [f, decayFactionBeliefs(currentWorldState.factionBeliefs[f] || [])])
+  ) as Record<Faction, readonly FactionBelief[]>;
+
+  // Decay world variables toward default at 20% per run
+  const decayRate = 0.2;
+  const decayedVariables: WorldVariables = {
+    morale: decayToward(currentWorldState.worldVariables.morale, DEFAULT_VARIABLE_VALUE, decayRate),
+    infrastructure: decayToward(currentWorldState.worldVariables.infrastructure, DEFAULT_VARIABLE_VALUE, decayRate),
+    economy: decayToward(currentWorldState.worldVariables.economy, DEFAULT_VARIABLE_VALUE, decayRate),
   };
 
   return {
@@ -70,6 +91,7 @@ export function evolveToNextRun(
     consequences: decayedConsequences,
     lastUpdateTurn: lastTurnNumber,
     history: currentWorldState.history,
+    worldVariables: decayedVariables,
   };
 }
 
@@ -99,12 +121,16 @@ export function updateWorldStateAfterRun(
     currentFaction
   );
 
+  // Apply event effects to world variables
+  const updatedVariables = applyEventVariableEffects(worldState.worldVariables, events);
+
   return {
     ...worldState,
     factionBeliefs: updatedBeliefs,
     consequences: [...worldState.consequences, ...newConsequences],
     lastUpdateTurn: events[events.length - 1]?.turnNumber || 1,
     history: worldState.history,
+    worldVariables: updatedVariables,
   };
 }
 
@@ -224,7 +250,7 @@ function updateFactionBeliefs(
     if (result.accuracy === "correct" && result.finalCredibility > 50) {
       const eventType = getEventTypeFromId(result.event.eventId);
 
-      for (const faction of ["historian", "scholar", "witness", "scribe"] as const) {
+      for (const faction of ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"] as const) {
         const beliefs = [...(updated[faction] || [])];
 
         // Find or create belief for this event type
@@ -264,6 +290,83 @@ function getEventTypeFromId(eventId: EventId): string {
       typeHint.toLowerCase().includes(t.charAt(0))
     ) || "weather"
   );
+}
+
+/**
+ * Apply event variable effects based on the events that occurred in a run.
+ * Each event type's effect is applied once per event occurrence.
+ * Variables are clamped to [0, 100].
+ */
+export function applyEventVariableEffects(
+  current: WorldVariables,
+  events: readonly Event[]
+): WorldVariables {
+  let morale = current.morale;
+  let infrastructure = current.infrastructure;
+  let economy = current.economy;
+
+  for (const event of events) {
+    const effect = EVENT_VARIABLE_EFFECTS[event.eventType];
+    if (effect) {
+      morale += effect[0];
+      infrastructure += effect[1];
+      economy += effect[2];
+    }
+  }
+
+  return {
+    morale: clamp(morale, 0, 100),
+    infrastructure: clamp(infrastructure, 0, 100),
+    economy: clamp(economy, 0, 100),
+  };
+}
+
+/**
+ * Get event type weight multipliers based on current world variables.
+ * Low variables boost certain event types (e.g., low morale → rebellion).
+ * High variables boost other event types (e.g., high morale → culture).
+ * Returns a map of eventType → weight multiplier (default 1.0).
+ */
+export function getWorldVariableEventWeights(
+  worldVariables: WorldVariables
+): Readonly<Record<string, number>> {
+  const weights: Record<string, number> = {};
+
+  // Initialize all event types at 1.0
+  for (const eventType of Object.keys(EVENT_TYPE_KEYWORDS)) {
+    weights[eventType] = 1.0;
+  }
+
+  // Apply boosts based on each variable's state
+  for (const varName of ["morale", "infrastructure", "economy"] as const) {
+    const value = worldVariables[varName];
+    const boosts = VARIABLE_EVENT_BOOSTS[varName];
+    if (!boosts) continue;
+
+    if (value < LOW_VARIABLE_THRESHOLD) {
+      // Boost low-variable event types
+      const multiplier = 1.0 + (LOW_VARIABLE_THRESHOLD - value) / LOW_VARIABLE_THRESHOLD;
+      for (const eventType of boosts.low) {
+        weights[eventType] = Math.max(weights[eventType], multiplier);
+      }
+    } else if (value > HIGH_VARIABLE_THRESHOLD) {
+      // Boost high-variable event types
+      const multiplier = 1.0 + (value - HIGH_VARIABLE_THRESHOLD) / (100 - HIGH_VARIABLE_THRESHOLD);
+      for (const eventType of boosts.high) {
+        weights[eventType] = Math.max(weights[eventType], multiplier);
+      }
+    }
+  }
+
+  return weights;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function decayToward(current: number, target: number, rate: number): number {
+  return current + (target - current) * rate;
 }
 
 function hashClaim(claim: Claim): number {

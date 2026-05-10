@@ -58,14 +58,35 @@ describe("calculateInfluence (FR19)", () => {
     expect(calc.influence).toBeCloseTo(1.0);
   });
 
-  it("should apply multiplier 1.0 for all MVP factions", () => {
-    const factions: Faction[] = ["historian", "scholar", "witness", "scribe"];
+  it("should apply multiplier 1.0 for all seven factions", () => {
+    const factions: Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
     const result = makeResult(60);
 
     for (const faction of factions) {
       const calc = calculateInfluence(result, faction);
       expect(calc.multiplier).toBe(1.0);
       expect(calc.influence).toBeCloseTo(0.6);
+    }
+  });
+
+  it("should handle all seven factions with 100 credibility", () => {
+    const factions: Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
+    const result = makeResult(100);
+
+    for (const faction of factions) {
+      const calc = calculateInfluence(result, faction);
+      expect(calc.influence).toBeCloseTo(1.0);
+      expect(calc.faction).toBe(faction);
+    }
+  });
+
+  it("should handle all seven factions with 0 credibility", () => {
+    const factions: Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
+    const result = makeResult(0);
+
+    for (const faction of factions) {
+      const calc = calculateInfluence(result, faction);
+      expect(calc.influence).toBe(0);
     }
   });
 

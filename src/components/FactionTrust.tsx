@@ -13,7 +13,7 @@ import React from "react";
 import styles from "./FactionTrust.module.css";
 
 interface FactionTrustLevel {
-  name: "historian" | "scholar" | "witness" | "scribe";
+  name: "historian" | "scholar" | "witness" | "scribe" | "diplomat" | "rebel" | "merchant";
   emoji: string;
   trust: number;
 }
@@ -30,8 +30,8 @@ const getTrustColor = (trust: number): "high" | "medium" | "low" => {
 
 export const FactionTrust: React.FC<FactionTrustProps> = ({ factions }) => {
   const factionMap = new Map(factions.map((f) => [f.name, f]));
-  const displayOrder: Array<"historian" | "scholar" | "witness" | "scribe"> =
-    ["historian", "scholar", "witness", "scribe"];
+  const displayOrder: Array<"historian" | "scholar" | "witness" | "scribe" | "diplomat" | "rebel" | "merchant"> =
+    ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
 
   return (
     <div className={styles.factionTrust} role="region" aria-label="Faction trust levels">

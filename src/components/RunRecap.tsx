@@ -29,6 +29,9 @@ interface RunRecapProps {
     scholar: number;
     witness: number;
     scribe: number;
+    diplomat: number;
+    rebel: number;
+    merchant: number;
   };
 }
 
@@ -84,7 +87,9 @@ export const RunRecap: React.FC<RunRecapProps> = ({
           <span className={styles.statLabel}>Faction Final Trust:</span>
           <span className={styles.factionOutcomes}>
             📖 {finalFactionOutcomes.historian}% · 🔬 {finalFactionOutcomes.scholar}% ·
-            👁️ {finalFactionOutcomes.witness}% · ✍️ {finalFactionOutcomes.scribe}%
+            👁️ {finalFactionOutcomes.witness}% · ✍️ {finalFactionOutcomes.scribe}% ·
+            🤝 {finalFactionOutcomes.diplomat}% · ⚡ {finalFactionOutcomes.rebel}% ·
+            💰 {finalFactionOutcomes.merchant}%
           </span>
         </div>
       </footer>

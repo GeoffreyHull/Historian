@@ -34,6 +34,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onContinueGame 
     scholar: 50,
     witness: 50,
     scribe: 50,
+    diplomat: 50,
+    rebel: 50,
+    merchant: 50,
   };
 
   return (

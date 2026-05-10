@@ -13,11 +13,12 @@ import {
   createTurn,
   WorldState,
   RunRecap,
+  TurnSnapshot,
 } from "./types";
 import { EventGenerator } from "./eventGenerator";
 import { evaluateClaimsBatch } from "./credibilitySystem";
 import { aggregateInfluence } from "./influenceCalculator";
-import { updateWorldStateAfterRun, evolveToNextRun } from "./worldStateManager";
+import { updateWorldStateAfterRun, evolveToNextRun, applyEventVariableEffects } from "./worldStateManager";
 import { computeTrustDeltas, applyTrustDeltas, isAutoLoss } from "./factionTrustSystem";
 import { generateRunRecap, formatHistoryBook } from "./recapGenerator";
 import { GameManager } from "./gameManager";
@@ -59,6 +60,17 @@ export function executeTurn(
   eventGenerator.setWorldState(gameState.worldState, gameState.currentFaction);
   const events = eventGenerator.generateEvents(currentTurn, 3, gameState.pendingForcedEventType);
 
+  // Save turn snapshot for retcon (before claims are processed)
+  const snapshot: TurnSnapshot = {
+    turnNumber: currentTurn,
+    events,
+    claims: gameState.claims,
+    influence: gameState.influence,
+    factionTrust: { ...gameState.factionTrust },
+    credibilityMap: { ...gameState.credibilityMap },
+    worldState: gameState.worldState,
+  };
+
   // Phase 2: Observation is already determined (set in events)
   // No changes needed; EventGenerator sets observedByPlayer
 
@@ -84,7 +96,8 @@ export function executeTurn(
   state = { ...state, influence: state.influence + influenceEarned };
 
   // Phase 4b: Update faction trust based on credibility results (FR15-FR18)
-  const trustDeltas = computeTrustDeltas(credibilityResults, gameState.currentFaction);
+  // Pass world variables so faction reactions cascade from world state
+  const trustDeltas = computeTrustDeltas(credibilityResults, gameState.currentFaction, gameState.worldState.worldVariables);
   const updatedTrust = applyTrustDeltas(state.factionTrust, trustDeltas);
   // FR20: clear pending forced event type — it was consumed when generating this turn's events
   state = { ...state, factionTrust: updatedTrust, pendingForcedEventType: null };
@@ -126,16 +139,18 @@ export function executeTurn(
     };
 
     // Reset game state for next run (factionTrust resets each run — fresh start)
+    // Clear turnSnapshots since retcon only applies within a run
     state = {
       ...state,
       turnNumber: createTurn(1),
       events: [],
       claims: [],
       credibilityMap: {},
-      factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0 },
+      factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0, diplomat: 0, rebel: 0, merchant: 0 },
       worldState: worldStateWithRecap,
       isGameOver: false,
-      pendingForcedEventType: null, // FR20: clear on run reset
+      pendingForcedEventType: null,
+      turnSnapshots: [],
     };
 
     return {
@@ -146,11 +161,20 @@ export function executeTurn(
       recap,
     };
   } else {
-    // Phase 8: Advance turn — preserve all state updates (influence, trust, isGameOver)
+    // Phase 8: Apply event variable effects for this turn
+    const updatedVariables = applyEventVariableEffects(state.worldState.worldVariables, events);
+
+    // Phase 9: Advance turn — preserve all state updates (influence, trust, isGameOver)
     // by incrementing turnNumber directly instead of fetching from the manager, which
     // was never updated with our influence/trust/isGameOver changes above.
     const nextTurn = (currentTurn + 1) as TurnNumber;
-    state = { ...state, turnNumber: nextTurn, claims: [] };
+    state = {
+      ...state,
+      worldState: { ...state.worldState, worldVariables: updatedVariables },
+      turnSnapshots: [...state.turnSnapshots, snapshot],
+      turnNumber: nextTurn,
+      claims: [],
+    };
 
     return {
       updatedState: state,

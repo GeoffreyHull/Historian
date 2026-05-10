@@ -15,6 +15,9 @@ const FACTION_MULTIPLIER: Record<Faction, number> = {
   scholar: 1.0,
   witness: 1.0,
   scribe: 1.0,
+  diplomat: 1.0,
+  rebel: 1.0,
+  merchant: 1.0,
 };
 
 /**

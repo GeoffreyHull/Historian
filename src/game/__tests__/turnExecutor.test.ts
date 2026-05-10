@@ -366,6 +366,9 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         scholar: -150,
         witness: -150,
         scribe: -150,
+        diplomat: -150,
+        rebel: -150,
+        merchant: -150,
       };
       const state = {
         ...createInitialGameState(),
@@ -384,6 +387,9 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         scholar: 10,
         witness: 10,
         scribe: 10,
+        diplomat: 10,
+        rebel: 10,
+        merchant: 10,
       };
       const state = {
         ...createInitialGameState(),
@@ -409,6 +415,9 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         scholar: -50,
         witness: -50,
         scribe: -50,
+        diplomat: 0,
+        rebel: 0,
+        merchant: 0,
       };
       const state = {
         ...createInitialGameState(),

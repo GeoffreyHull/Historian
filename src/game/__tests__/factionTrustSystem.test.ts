@@ -45,7 +45,7 @@ function makeResult(
   };
 }
 
-const ALL_FACTIONS: readonly Faction[] = ["historian", "scholar", "witness", "scribe"];
+const ALL_FACTIONS: readonly Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
 
 // ---------------------------------------------------------------------------
 // createInitialTrustMap
@@ -59,9 +59,9 @@ describe("createInitialTrustMap", () => {
     }
   });
 
-  it("should include all four factions", () => {
+  it("should include all seven factions", () => {
     const trust = createInitialTrustMap();
-    expect(Object.keys(trust)).toHaveLength(4);
+    expect(Object.keys(trust)).toHaveLength(7);
   });
 });
 
@@ -131,7 +131,69 @@ describe("computeTrustDeltas", () => {
     expect(deltas.witness).toBe(1);
   });
 
-  // ── Golden Tests ──────────────────────────────────────────────────────────
+  it("should return different deltas with world variable modifier when variables are healthy", () => {
+    const result = makeResult(75);
+    const healthyVars = { morale: 90, infrastructure: 80, economy: 85 };
+    const deltas = computeTrustDeltas([result], "historian", healthyVars);
+    // historian cares about morale → effective = 90*0.6 + avg(85)*0.4 = 54+34=88 → modifier = 0.6+(88/100)=1.48
+    // baseDelta = Math.round(5 * 1.48) = 7
+    expect(deltas.historian).toBeGreaterThan(5);
+  });
+
+  it("should return different deltas with world variable modifier when variables are poor", () => {
+    const result = makeResult(75);
+    const poorVars = { morale: 10, infrastructure: 15, economy: 20 };
+    const deltas = computeTrustDeltas([result], "historian", poorVars);
+    // historian cares about morale → effective = 10*0.6 + avg(15)*0.4 = 6+6=12 → modifier = 0.6+(12/100)=0.72
+    // baseDelta = Math.round(5 * 0.72) = 4
+    expect(deltas.historian).toBeLessThan(5);
+  });
+
+  it("should return standard deltas when world variables are at default (50)", () => {
+    const result = makeResult(75);
+    const defaultVars = { morale: 50, infrastructure: 50, economy: 50 };
+    const deltas = computeTrustDeltas([result], "historian", defaultVars);
+    // effective = 50*0.6 + 50*0.4 = 50 → modifier = 0.6 + 0.5 = 1.1
+    // baseDelta = Math.round(5 * 1.1) = 6 (slightly above base 5)
+    expect(deltas.historian).toBe(6);
+  });
+
+  it("should apply different modifiers per faction based on preferred variable", () => {
+    const result = makeResult(75);
+    const vars = { morale: 90, infrastructure: 10, economy: 50 };
+    const deltas = computeTrustDeltas([result], "historian", vars);
+    // historian cares about morale → high modifier
+    // merchant cares about economy → medium modifier
+    expect(deltas.historian).toBeGreaterThan(deltas.merchant);
+  });
+
+  it("should amplify penalty when world variables are poor and credibility is low", () => {
+    const result = makeResult(20); // low credibility = -10 base
+    const poorVars = { morale: 5, infrastructure: 5, economy: 5 };
+    const deltas = computeTrustDeltas([result], "historian", poorVars);
+    // modifier = 0.6 + (5/100) = 0.65
+    // baseDelta = Math.round(-10 * (2 - 0.65)) = Math.round(-10 * 1.35) = Math.round(-13.5) = -14
+    expect(deltas.historian).toBeLessThan(-10); // penalty is worse than normal -10
+  });
+
+  it("should reduce insult penalty when world variables are healthy", () => {
+    const result = makeResult(50, true); // insult
+    const healthyVars = { morale: 90, infrastructure: 90, economy: 90 };
+    const deltas = computeTrustDeltas([result], "historian", healthyVars);
+    // With high effective value, modifier > 1, so (2 - modifier) < 1
+    // insult penalty = 15 * (2 - modifier) < 15
+    expect(deltas.historian).toBeGreaterThan(-14); // -14 instead of -14 with default
+  });
+
+  golden("should produce identical deltas with world variables for same inputs (determinism)", () => {
+    const vars = { morale: 30, infrastructure: 70, economy: 50 };
+    const results = [makeResult(75)];
+    const d1 = computeTrustDeltas(results, "historian", vars);
+    const d2 = computeTrustDeltas(results, "historian", vars);
+    for (const faction of ALL_FACTIONS) {
+      expect(d1[faction]).toBe(d2[faction]);
+    }
+  });
 
   golden("should not mutate input results array when computing deltas", () => {
     const result = makeResult(75);
@@ -188,8 +250,8 @@ describe("applyTrustDeltas", () => {
   });
 
   it("should not affect factions with zero delta", () => {
-    const trust: FactionTrustMap = { historian: 50, scholar: -30, witness: 10, scribe: -5 };
-    const deltas: FactionTrustMap = { historian: 0, scholar: 0, witness: 0, scribe: 0 };
+    const trust: FactionTrustMap = { historian: 50, scholar: -30, witness: 10, scribe: -5, diplomat: 0, rebel: 0, merchant: 0 };
+    const deltas: FactionTrustMap = { historian: 0, scholar: 0, witness: 0, scribe: 0, diplomat: 0, rebel: 0, merchant: 0 };
     const updated = applyTrustDeltas(trust, deltas);
     expect(updated).toEqual(trust);
   });
@@ -266,8 +328,11 @@ describe("getRefusingFactions (FR17)", () => {
       scholar: -110,
       witness: -200,
       scribe: -101,
+      diplomat: -150,
+      rebel: -110,
+      merchant: -200,
     };
-    expect(getRefusingFactions(trust)).toHaveLength(4);
+    expect(getRefusingFactions(trust)).toHaveLength(7);
   });
 });
 
@@ -304,6 +369,9 @@ describe("isAutoLoss (FR18)", () => {
       scholar: -110,
       witness: -200,
       scribe: -101,
+      diplomat: -150,
+      rebel: -110,
+      merchant: -200,
     };
     expect(isAutoLoss(trust)).toBe(true);
   });
@@ -334,7 +402,7 @@ describe("Trust across multiple turns", () => {
   });
 
   it("should recover trust with high-credibility claims", () => {
-    const badTrust: FactionTrustMap = { historian: -50, scholar: -50, witness: -50, scribe: -50 };
+    const badTrust: FactionTrustMap = { historian: -50, scholar: -50, witness: -50, scribe: -50, diplomat: -50, rebel: -50, merchant: -50 };
     const goodResult = makeResult(80); // +5 per turn
     const deltas = computeTrustDeltas([goodResult], "historian");
     const recovered = applyTrustDeltas(badTrust, deltas);
