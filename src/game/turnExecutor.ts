@@ -18,7 +18,7 @@ import {
 import { EventGenerator } from "./eventGenerator";
 import { evaluateClaimsBatch } from "./credibilitySystem";
 import { aggregateInfluence } from "./influenceCalculator";
-import { updateWorldStateAfterRun, evolveToNextRun, applyEventVariableEffects } from "./worldStateManager";
+import { updateWorldStateAfterRun, evolveToNextRun, applyEventVariableEffects, cascadeConsequences } from "./worldStateManager";
 import { computeTrustDeltas, applyTrustDeltas, isAutoLoss } from "./factionTrustSystem";
 import { generateRunRecap, formatHistoryBook } from "./recapGenerator";
 import { GameManager } from "./gameManager";
@@ -164,13 +164,19 @@ export function executeTurn(
     // Phase 8: Apply event variable effects for this turn
     const updatedVariables = applyEventVariableEffects(state.worldState.worldVariables, events);
 
+    // Phase 8b: Generate cascading consequences from existing ones and append them
+    const cascadeChildren = cascadeConsequences(state.worldState.consequences, currentTurn);
+    const updatedConsequences = [...state.worldState.consequences, ...cascadeChildren];
+
     // Phase 9: Advance turn — preserve all state updates (influence, trust, isGameOver)
-    // by incrementing turnNumber directly instead of fetching from the manager, which
-    // was never updated with our influence/trust/isGameOver changes above.
     const nextTurn = (currentTurn + 1) as TurnNumber;
     state = {
       ...state,
-      worldState: { ...state.worldState, worldVariables: updatedVariables },
+      worldState: {
+        ...state.worldState,
+        worldVariables: updatedVariables,
+        consequences: updatedConsequences,
+      },
       turnSnapshots: [...state.turnSnapshots, snapshot],
       turnNumber: nextTurn,
       claims: [],

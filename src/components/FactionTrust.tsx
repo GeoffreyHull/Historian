@@ -28,6 +28,15 @@ const getTrustColor = (trust: number): "high" | "medium" | "low" => {
   return "low";
 };
 
+const getTrustLabel = (trust: number): string => {
+  if (trust >= 80) return "Trusted";
+  if (trust >= 50) return "Favorable";
+  if (trust >= 0) return "Neutral";
+  if (trust >= -50) return "Wary";
+  if (trust >= -100) return "Strained";
+  return "Refused";
+};
+
 export const FactionTrust: React.FC<FactionTrustProps> = ({ factions }) => {
   const factionMap = new Map(factions.map((f) => [f.name, f]));
   const displayOrder: Array<"historian" | "scholar" | "witness" | "scribe" | "diplomat" | "rebel" | "merchant"> =
@@ -43,18 +52,20 @@ export const FactionTrust: React.FC<FactionTrustProps> = ({ factions }) => {
           if (!faction) return null;
 
           const trustLevel = getTrustColor(faction.trust);
+          const trustLabel = getTrustLabel(faction.trust);
 
           return (
             <div
               key={factionName}
               className={`${styles.cell} ${styles[`trust-${trustLevel}`]}`}
-              aria-label={`${faction.name.charAt(0).toUpperCase() + faction.name.slice(1)} faction trust: ${faction.trust}%`}
+              aria-label={`${faction.name.charAt(0).toUpperCase() + faction.name.slice(1)} faction trust: ${faction.trust}, status: ${trustLabel}`}
             >
-              <div className={styles.emoji}>{faction.emoji}</div>
+              <div className={styles.emoji} aria-hidden="true">{faction.emoji}</div>
               <div className={styles.name}>
                 {faction.name.charAt(0).toUpperCase() + faction.name.slice(1)}
               </div>
-              <div className={styles.trust}>{faction.trust}%</div>
+              <div className={styles.trust}>{faction.trust}</div>
+              <div className={styles.trustLabel}>{trustLabel}</div>
             </div>
           );
         })}

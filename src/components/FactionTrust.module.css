@@ -84,3 +84,17 @@
   color: #d0d0d0;
   font-family: monospace;
 }
+
+.trustLabel {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #888;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell {
+    transition: none;
+  }
+}

@@ -111,7 +111,7 @@ export interface WorldState {
   readonly initialSeed: number; // Seed for deterministic event generation (set at game start, persisted across runs)
   readonly runNumber: number; // Which run is this (1, 2, 3, etc.)
   readonly factionBeliefs: Readonly<Record<Faction, readonly FactionBelief[]>>; // What each faction believes
-  readonly consequences: readonly ConsequenceRecord[]; // Events triggered by past claims
+  readonly consequences: readonly CascadingConsequence[]; // Events triggered by past claims (may cascade)
   readonly lastUpdateTurn: TurnNumber; // When world state was last updated
   readonly history: readonly RunRecap[]; // Accumulated recaps from all completed runs
   readonly worldVariables: WorldVariables; // Aggregate world state (Phase 2)
@@ -138,6 +138,19 @@ export interface ConsequenceRecord {
   readonly turnIntroduced: TurnNumber; // When the consequence started
   readonly intensity: number; // [0, 100] how strong the consequence is
   readonly decayRate: number; // [0, 1] how fast it fades
+}
+
+/**
+ * CascadingConsequence: A consequence that can trigger further consequences.
+ * Extends ConsequenceRecord with cascade-specific metadata.
+ * depth=0 means root (from player claim), depth=1 first cascade, etc.
+ * Max cascade depth is 3 per Phase 3 spec.
+ */
+export interface CascadingConsequence extends ConsequenceRecord {
+  readonly depth?: number; // How many cascade levels deep (0 = root claim)
+  readonly triggeredEventType?: string; // Event type this consequence manifests as
+  readonly affectedVariable?: keyof WorldVariables | null; // World variable affected
+  readonly variableDelta?: number; // [-50, +50] change applied to affectedVariable
 }
 
 /**
