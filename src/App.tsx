@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
 import { executeTurn } from "./game/turnExecutor";
-import { LLMEventWriterService } from "./game/eventWriterService";
+import { defaultEventWriterService, TransformersEventWriterService } from "./game/eventWriterService";
 import { Claim, CredibilityResult, Event, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
 import { CLAIM_REVEAL_DELAY } from "./game/constants";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
@@ -33,19 +33,11 @@ function generateBaseEventsForState(state: GameState): Event[] {
 
 async function generateEventsForState(
   state: GameState,
-  writerService: LLMEventWriterService | null
+  writerService: TransformersEventWriterService
 ): Promise<Event[]> {
   const base = generateBaseEventsForState(state);
-  if (!writerService) return base;
-  try {
-    return await writerService.enrichEvents(base, state.turnNumber, state.currentFaction);
-  } catch {
-    return base;
-  }
+  return writerService.enrichEvents(base, state.turnNumber, state.currentFaction);
 }
-
-const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-const llmWriter = apiKey ? new LLMEventWriterService(apiKey) : null;
 
 export const App: React.FC = () => {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -79,7 +71,7 @@ export const App: React.FC = () => {
     setIsInRetcon(true);
     const rewound = enterRetcon(gameState, targetTurn);
     setIsLoadingEvents(true);
-    const events = await generateEventsForState(rewound, llmWriter);
+    const events = await generateEventsForState(rewound, defaultEventWriterService);
     setIsLoadingEvents(false);
     currentEventsRef.current = events;
     setGameState({ ...rewound, events });
@@ -100,7 +92,7 @@ export const App: React.FC = () => {
     if (!retconOriginalSnapshot) return;
     const restored = cancelRetcon(gameState, retconOriginalSnapshot);
     setIsLoadingEvents(true);
-    const events = await generateEventsForState(restored, llmWriter);
+    const events = await generateEventsForState(restored, defaultEventWriterService);
     setIsLoadingEvents(false);
     currentEventsRef.current = events;
     setGameState({ ...restored, events });
@@ -114,7 +106,7 @@ export const App: React.FC = () => {
   const handleStartGame = async (faction: Faction) => {
     const initial = createInitialGameState(faction);
     setIsLoadingEvents(true);
-    const events = await generateEventsForState(initial, llmWriter);
+    const events = await generateEventsForState(initial, defaultEventWriterService);
     setIsLoadingEvents(false);
     currentEventsRef.current = events;
     setGameState({ ...initial, events });
@@ -132,7 +124,7 @@ export const App: React.FC = () => {
     const saved = loadGameState();
     if (!saved) return;
     setIsLoadingEvents(true);
-    const events = await generateEventsForState(saved, llmWriter);
+    const events = await generateEventsForState(saved, defaultEventWriterService);
     setIsLoadingEvents(false);
     currentEventsRef.current = events;
     setGameState({ ...saved, events });
@@ -212,7 +204,7 @@ export const App: React.FC = () => {
       setNextRunState(result.updatedState);
       setScreen("recap");
     } else {
-      const events = await generateEventsForState(result.updatedState, llmWriter);
+      const events = await generateEventsForState(result.updatedState, defaultEventWriterService);
       setIsLoadingEvents(false);
       currentEventsRef.current = events;
       setGameState({ ...result.updatedState, events });
@@ -233,7 +225,7 @@ export const App: React.FC = () => {
   const handleContinueAfterRecap = async () => {
     if (nextRunState) {
       setIsLoadingEvents(true);
-      const events = await generateEventsForState(nextRunState, llmWriter);
+      const events = await generateEventsForState(nextRunState, defaultEventWriterService);
       setIsLoadingEvents(false);
       currentEventsRef.current = events;
       setGameState({ ...nextRunState, events });

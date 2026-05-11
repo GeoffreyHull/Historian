@@ -1,89 +1,91 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { Event, Faction } from "./types";
 
-const SYSTEM_PROMPT = `You are a narrative engine for Historian, a medieval historical strategy game.
-Generate vivid, specific event descriptions and eyewitness accounts in archaic prose.
-Historical setting only — no magic, no modern technology.
-Always respond with valid JSON only, no markdown or extra text.`;
+const MODEL_ID = "Xenova/flan-t5-small";
 
-function buildPrompt(events: Event[], turnNumber: number, faction: Faction): string {
-  const eventList = events
-    .map(
-      (e, i) =>
-        `Event ${i + 1}: type="${e.eventType}", witnesses=[${e.evidenceFragments
-          .map((f) => `${f.witnessName} (${f.role})`)
-          .join(", ")}]`
-    )
-    .join("\n");
-
-  return `Turn ${turnNumber}, chronicled for the ${faction} faction.
-
-${eventList}
-
-For each event produce a one-sentence description and one account per witness (1–2 sentences each, written in first-person from the witness's perspective).
-
-Respond with JSON:
-{
-  "events": [
-    {
-      "description": "...",
-      "accounts": ["witness 1 account", "witness 2 account", "witness 3 account"]
-    }
-  ]
-}`;
+function parseGenerated(
+  text: string,
+  fragmentCount: number
+): { description: string; accounts: string[] } {
+  // Expect numbered output: "1) description 2) account1 3) account2 ..."
+  const parts = text
+    .split(/\d+\)/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const description = parts[0] ?? "";
+  const accounts = parts.slice(1, fragmentCount + 1);
+  while (accounts.length < fragmentCount) accounts.push("");
+  return { description, accounts };
 }
 
-interface LLMEnrichedEvent {
-  description: string;
-  accounts: string[];
-}
+export class TransformersEventWriterService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private textPipeline: any = null;
+  private initialized = false;
 
-interface LLMResponse {
-  events: LLMEnrichedEvent[];
-}
-
-export class LLMEventWriterService {
-  private client: Anthropic;
-
-  constructor(apiKey: string) {
-    this.client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+    const { pipeline } = await import("@xenova/transformers");
+    this.textPipeline = await pipeline("text2text-generation", MODEL_ID);
+    this.initialized = true;
   }
 
-  async enrichEvents(events: Event[], turnNumber: number, faction: Faction): Promise<Event[]> {
-    const prompt = buildPrompt(events, turnNumber, faction);
-
-    let parsed: LLMResponse;
+  async enrichEvents(
+    events: Event[],
+    turnNumber: number,
+    faction: Faction
+  ): Promise<Event[]> {
     try {
-      const response = await this.client.messages.create({
-        model: "claude-opus-4-7",
-        max_tokens: 900,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const text =
-        response.content[0].type === "text" ? response.content[0].text : "";
-      parsed = JSON.parse(text) as LLMResponse;
+      await this.ensureInitialized();
     } catch {
       return events;
     }
 
-    return events.map((event, i) => {
-      const enriched = parsed.events[i];
-      if (!enriched?.description) return event;
+    const enriched: Event[] = [];
+    for (const event of events) {
+      enriched.push(await this.enrichEvent(event, turnNumber, faction));
+    }
+    return enriched;
+  }
 
-      const updatedFragments = event.evidenceFragments.map((f, j) => ({
-        ...f,
-        account:
-          enriched.accounts[j] ??
-          f.account,
-      }));
+  private async enrichEvent(
+    event: Event,
+    turnNumber: number,
+    _faction: Faction
+  ): Promise<Event> {
+    try {
+      const names = event.evidenceFragments.map(
+        (f) => `${f.witnessName} (${f.role})`
+      );
+      const prompt =
+        `Medieval historical event. Type: ${event.eventType}. Turn: ${turnNumber}. ` +
+        `Witnesses: ${names.join(", ")}. ` +
+        `Write: 1) One vivid event description sentence. ` +
+        names
+          .map((n, i) => `${i + 2}) ${n.split(" ")[0]}'s brief account.`)
+          .join(" ");
+
+      const result = await this.textPipeline(prompt, { max_new_tokens: 120 });
+      const generated = result[0]?.generated_text?.trim() ?? "";
+      const { description, accounts } = parseGenerated(
+        generated,
+        event.evidenceFragments.length
+      );
+
+      if (!description) return event;
 
       return {
         ...event,
-        description: enriched.description,
-        evidenceFragments: updatedFragments,
+        description,
+        evidenceFragments: event.evidenceFragments.map((f, i) =>
+          accounts[i]
+            ? { ...f, account: `${f.witnessName} reported: "${accounts[i]}"` }
+            : f
+        ),
       };
-    });
+    } catch {
+      return event;
+    }
   }
 }
+
+export const defaultEventWriterService = new TransformersEventWriterService();
