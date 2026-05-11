@@ -77,8 +77,24 @@ export const EventCard: React.FC<EventCardProps> = ({
         </button>
       )}
 
-      {/* Placeholder for future consequence reference */}
-      {/* Will show: "📎 Echoed from C3" with clickable link */}
+      {event.evidenceFragments.filter((f) => f.available).length > 0 && (
+        <div className={styles.fragments}>
+          <div className={styles.fragmentsLabel}>Witness Accounts</div>
+          {event.evidenceFragments
+            .filter((f) => f.available)
+            .map((f, i) => (
+              <div
+                key={i}
+                className={`${styles.fragment} ${styles[`fragment-${f.reliability}`]}`}
+              >
+                <div className={styles.fragmentSource}>
+                  {f.witnessName}, {f.role}
+                </div>
+                <div className={styles.fragmentAccount}>{f.account}</div>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 };
