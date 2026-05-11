@@ -9,6 +9,7 @@ import {
   WorldVariables,
   FactionBelief,
   ConsequenceRecord,
+  CascadingConsequence,
   Claim,
   Event,
   EventId,
@@ -206,8 +207,8 @@ function recordConsequences(
   credibilityResults: readonly CredibilityResult[],
   events: readonly Event[],
   worldState: WorldState
-): ConsequenceRecord[] {
-  const consequences: ConsequenceRecord[] = [];
+): CascadingConsequence[] {
+  const consequences: CascadingConsequence[] = [];
 
   // For each accurate, high-credibility claim, record it as a potential consequence trigger
   for (const result of credibilityResults) {
@@ -216,25 +217,129 @@ function recordConsequences(
       result.finalCredibility > 60 &&
       !result.hasInsult
     ) {
-      // Probabilistically trigger a consequence based on credibility
       const triggerChance = result.finalCredibility / 100;
-
-      // Use a deterministic but claim-based trigger (for reproducibility)
       const triggerHash = hashClaim(result.claim) % 100;
 
       if (triggerHash < triggerChance * 100) {
+        // Find the matching event to get its type
+        const matchedEvent = events.find((e) => e.eventId === result.claim.eventId);
+        const triggeredEventType = matchedEvent?.eventType ?? "discovery";
+
+        // Determine which world variable this event type most affects
+        const affectedVariable = getAffectedVariable(triggeredEventType);
+        const variableDelta = getVariableDelta(triggeredEventType, affectedVariable, result.finalCredibility);
+
         consequences.push({
           claimText: result.claim.claimText,
           triggerEventId: result.claim.eventId,
           turnIntroduced: result.claim.turnNumber,
           intensity: result.finalCredibility,
-          decayRate: 0.15, // Consequences fade at 15% per run
+          decayRate: 0.15,
+          depth: 0,
+          triggeredEventType,
+          affectedVariable,
+          variableDelta,
         });
       }
     }
   }
 
   return consequences;
+}
+
+/**
+ * Determine which WorldVariables key is most affected by an event type.
+ * Returns null if the event type has no significant variable effect.
+ */
+function getAffectedVariable(eventType: string): keyof WorldVariables | null {
+  const effects = EVENT_VARIABLE_EFFECTS[eventType];
+  if (!effects) return null;
+  const [moraleEffect, infraEffect, econEffect] = effects;
+  const maxAbsolute = Math.max(Math.abs(moraleEffect), Math.abs(infraEffect), Math.abs(econEffect));
+  if (maxAbsolute === 0) return null;
+  if (Math.abs(moraleEffect) === maxAbsolute) return "morale";
+  if (Math.abs(infraEffect) === maxAbsolute) return "infrastructure";
+  return "economy";
+}
+
+/**
+ * Compute how much the affected variable changes when this consequence cascades.
+ * Scaled by credibility; clamped to [-50, +50].
+ */
+function getVariableDelta(
+  eventType: string,
+  affectedVariable: keyof WorldVariables | null,
+  credibility: number
+): number {
+  if (!affectedVariable) return 0;
+  const effects = EVENT_VARIABLE_EFFECTS[eventType];
+  if (!effects) return 0;
+  const rawEffect =
+    affectedVariable === "morale" ? effects[0]
+    : affectedVariable === "infrastructure" ? effects[1]
+    : effects[2];
+  // Scale by credibility (0-100) → smaller delta for low-credibility claims
+  const scaled = rawEffect * (credibility / 100);
+  return Math.max(-50, Math.min(50, Math.round(scaled)));
+}
+
+/**
+ * Generate cascading child consequences from existing ones.
+ * Each consequence can spawn cascades up to MAX_CASCADE_DEPTH.
+ * Cascade probability = intensity/100 * depthFactor (halved each level).
+ * Returns new child consequences only (not parents).
+ */
+export function cascadeConsequences(
+  currentConsequences: readonly CascadingConsequence[],
+  currentTurn: TurnNumber
+): CascadingConsequence[] {
+  const MAX_CASCADE_DEPTH = 3;
+  const children: CascadingConsequence[] = [];
+
+  for (const parent of currentConsequences) {
+    const depth = parent.depth ?? 0;
+    if (depth >= MAX_CASCADE_DEPTH) continue;
+
+    const depthFactor = Math.pow(0.5, depth);
+    const cascadeChance = (parent.intensity / 100) * depthFactor;
+
+    // Deterministic cascade trigger using hash of parent claim + depth
+    const triggerHash = (hashString(parent.claimText + depth) % 100) / 100;
+    if (triggerHash >= cascadeChance) continue;
+
+    // Cascade intensity is halved from parent
+    const childIntensity = Math.max(0, parent.intensity * 0.5);
+    if (childIntensity < 5) continue; // Don't generate negligible cascades
+
+    // The child event type is related to the parent (same or adjacent)
+    const childEventType = parent.triggeredEventType ?? "discovery";
+    const childAffectedVariable = getAffectedVariable(childEventType);
+    const childDelta = getVariableDelta(childEventType, childAffectedVariable, childIntensity);
+
+    children.push({
+      claimText: `cascade of "${parent.claimText}"`,
+      triggerEventId: parent.triggerEventId,
+      turnIntroduced: currentTurn,
+      intensity: childIntensity,
+      decayRate: parent.decayRate * 1.2, // Cascades decay faster
+      depth: depth + 1,
+      triggeredEventType: childEventType,
+      affectedVariable: childAffectedVariable,
+      variableDelta: childDelta,
+    });
+  }
+
+  return children;
+}
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
 }
 
 function updateFactionBeliefs(

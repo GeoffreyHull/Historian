@@ -1,0 +1,159 @@
+.container {
+  background: var(--color-card, #1a1a2e);
+  border: 1px solid var(--color-border, #2d2d4a);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-muted, #8888aa);
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+}
+
+.entryHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.25rem 0.35rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font-size: 0.75rem;
+  transition: background 0.15s;
+}
+
+.entryHeader:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-border, #2d2d4a);
+}
+
+.depthBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.depthBadge[data-depth="0"] {
+  background: rgba(100, 200, 100, 0.2);
+  color: #6dc86d;
+}
+
+.depthBadge[data-depth="1"] {
+  background: rgba(200, 180, 60, 0.2);
+  color: #c8b43c;
+}
+
+.depthBadge[data-depth="2"] {
+  background: rgba(200, 120, 60, 0.2);
+  color: #c87840;
+}
+
+.depthBadge[data-depth="3"] {
+  background: rgba(200, 60, 60, 0.2);
+  color: #c84040;
+}
+
+.eventType {
+  font-size: 0.72rem;
+  color: var(--color-text, #d0d0e8);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barOuter {
+  width: 3.5rem;
+  height: 0.35rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.barInner {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.bar-high {
+  background: #6dc86d;
+}
+
+.bar-medium {
+  background: #c8b43c;
+}
+
+.bar-low {
+  background: #c84040;
+}
+
+.intensity {
+  font-size: 0.65rem;
+  color: var(--color-muted, #8888aa);
+  min-width: 1.5rem;
+  text-align: right;
+}
+
+.detail {
+  margin: 0.25rem 0 0 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--color-border, #2d2d4a);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.7rem;
+  color: var(--color-muted, #8888aa);
+}
+
+.detail p {
+  margin: 0.15rem 0;
+  line-height: 1.4;
+}
+
+.claimText {
+  color: var(--color-text, #d0d0e8);
+  font-style: italic;
+}
+
+.variable {
+  color: var(--color-text, #d0d0e8);
+}
+
+.positive {
+  color: #6dc86d;
+  font-weight: 600;
+}
+
+.negative {
+  color: #c84040;
+  font-weight: 600;
+}
+
+.decay {
+  color: var(--color-muted, #8888aa);
+}
