@@ -311,12 +311,14 @@ export class EventGenerator {
    * Always produces exactly 3 fragments; availability scales with observation.
    */
   private generateFragments(description: string, observedByPlayer: boolean): EvidenceFragment[] {
-    return Array.from({ length: 3 }, () => {
+    const words = description.split(" ");
+    return Array.from({ length: 3 }, (_, i) => {
       const witnessName = this.rng.pick(WITNESS_NAMES as string[]);
       const role = this.rng.pick(WITNESS_ROLES as string[]);
       const reliability = this.rng.pick(["high", "medium", "low"] as ClaimReliability[]);
       const available = observedByPlayer ? this.rng.nextBool(0.8) : this.rng.nextBool(0.2);
-      const excerpt = description.split(" ").slice(0, 6).join(" ");
+      const start = Math.min(i * 3, Math.max(0, words.length - 6));
+      const excerpt = words.slice(start, start + 7).join(" ");
       const account = `${witnessName} reported: "${excerpt}..."`;
       return { witnessName, role, account, reliability, available };
     });

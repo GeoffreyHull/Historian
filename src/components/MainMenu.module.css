@@ -247,6 +247,17 @@
   outline-offset: 4px;
 }
 
+.modelStatus {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.modelStatusError {
+  color: #c97070;
+}
+
 .footer {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding: 24px 32px;

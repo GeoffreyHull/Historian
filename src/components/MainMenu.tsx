@@ -11,14 +11,24 @@
 
 import React from "react";
 import { Faction } from "../game/types";
+import { ModelLoadProgress } from "../game/eventWriterService";
 import styles from "./MainMenu.module.css";
 
 interface MainMenuProps {
   onStartGame: (faction: Faction) => void;
   onContinueGame?: () => void;
+  modelProgress?: ModelLoadProgress;
 }
 
-export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onContinueGame }) => {
+export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onContinueGame, modelProgress }) => {
+  const modelStatusText = (() => {
+    if (!modelProgress || modelProgress.status === "ready") return null;
+    if (modelProgress.status === "error") return "Chronicle engine unavailable — using fallback text";
+    if (modelProgress.status === "downloading" && modelProgress.progress !== undefined) {
+      return `Preparing chronicle engine... ${modelProgress.progress}%`;
+    }
+    return "Preparing chronicle engine...";
+  })();
   const [selectedFaction, setSelectedFaction] = React.useState<Faction>("historian");
 
   const factions: Array<{ name: Faction; emoji: string; description: string }> = [
@@ -137,6 +147,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onContinueGame 
           >
             Begin Your Account
           </button>
+          {modelStatusText && (
+            <p className={`${styles.modelStatus} ${modelProgress?.status === "error" ? styles.modelStatusError : ""}`}>
+              {modelStatusText}
+            </p>
+          )}
         </div>
       </main>
 
