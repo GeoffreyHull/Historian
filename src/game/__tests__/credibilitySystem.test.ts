@@ -1,6 +1,7 @@
 /**
  * Credibility System Tests: 120+ parametrized test cases.
  * Validates: accuracy, penalties, insults, influence, immutability, determinism.
+ * Phase 2: All credibility functions are async with optional EmbeddingService injection.
  */
 
 import { describe, it, expect } from "vitest";
@@ -25,19 +26,22 @@ import {
 } from "./utils/testHelpers";
 import { SEEDED_EVENTS } from "./fixtures/events";
 import { createClaim, createAccurateClaim, createInsultingClaim } from "./fixtures/claims";
+import { JaccardEmbeddingService } from "../embeddingService";
+
+const embeddingService = new JaccardEmbeddingService();
 
 // ============================================================================
 // AC1: Accuracy Evaluation (30–40 cases)
 // ============================================================================
 
 describe("Accuracy Evaluation (AC1)", () => {
-  it("should evaluate accuracy as a numeric similarity score [0, 100]", () => {
+  it("should evaluate accuracy as a numeric similarity score [0, 100]", async () => {
     const event = SEEDED_EVENTS[0]; // "A light rain fell on the castle grounds throughout the morning."
     const claimRelated = createClaim({ claimText: "rain fell on the castle" });
     const claimUnrelated = createClaim({ claimText: "the army marched at dawn" });
 
-    const scoreRelated = evaluateClaimAccuracy(claimRelated, event);
-    const scoreUnrelated = evaluateClaimAccuracy(claimUnrelated, event);
+    const scoreRelated = await evaluateClaimAccuracy(claimRelated, event, embeddingService);
+    const scoreUnrelated = await evaluateClaimAccuracy(claimUnrelated, event, embeddingService);
 
     expect(typeof scoreRelated).toBe("number");
     expect(scoreRelated).toBeGreaterThanOrEqual(0);
@@ -45,19 +49,19 @@ describe("Accuracy Evaluation (AC1)", () => {
     expect(scoreRelated).toBeGreaterThan(scoreUnrelated); // related claim scores higher
   });
 
-  it("should return 0 for empty claims", () => {
+  it("should return 0 for empty claims", async () => {
     const event = SEEDED_EVENTS[0];
     const claim = createClaim({ claimText: "" });
-    const result = evaluateClaimAccuracy(claim, event);
+    const result = await evaluateClaimAccuracy(claim, event, embeddingService);
     expect(result).toBe(0);
   });
 
-  it("should be case-insensitive", () => {
+  it("should be case-insensitive", async () => {
     const event = SEEDED_EVENTS[0];
     const claimLower = createClaim({ claimText: "rain fell castle morning" });
     const claimUpper = createClaim({ claimText: "RAIN FELL CASTLE MORNING" });
-    const resultLower = evaluateClaimAccuracy(claimLower, event);
-    const resultUpper = evaluateClaimAccuracy(claimUpper, event);
+    const resultLower = await evaluateClaimAccuracy(claimLower, event, embeddingService);
+    const resultUpper = await evaluateClaimAccuracy(claimUpper, event, embeddingService);
     expect(resultLower).toBe(resultUpper);
   });
 });
@@ -184,39 +188,39 @@ describe("Influence Calculation (AC4)", () => {
 // ============================================================================
 
 describe("Immutability & Purity (AC5)", () => {
-  golden("should not mutate claim input", () => {
+  golden("should not mutate claim input", async () => {
     const claim = createClaim();
     const claimCopy = JSON.parse(JSON.stringify(claim));
 
-    evaluateClaim(claim, SEEDED_EVENTS[0], "historian");
+    await evaluateClaim(claim, SEEDED_EVENTS[0], "historian", embeddingService);
 
     expect(claim).toEqual(claimCopy);
   });
 
-  golden("should not mutate event input", () => {
+  golden("should not mutate event input", async () => {
     const event = SEEDED_EVENTS[0];
     const eventCopy = JSON.parse(JSON.stringify(event));
 
-    evaluateClaim(createClaim(), event, "historian");
+    await evaluateClaim(createClaim(), event, "historian", embeddingService);
 
     expect(event).toEqual(eventCopy);
   });
 
-  golden("should return new objects", () => {
-    const result1 = evaluateClaim(createClaim(), SEEDED_EVENTS[0], "historian");
-    const result2 = evaluateClaim(createClaim(), SEEDED_EVENTS[0], "historian");
+  golden("should return new objects", async () => {
+    const result1 = await evaluateClaim(createClaim(), SEEDED_EVENTS[0], "historian", embeddingService);
+    const result2 = await evaluateClaim(createClaim(), SEEDED_EVENTS[0], "historian", embeddingService);
 
     expect(result1).not.toBe(result2); // Different object instances
     expect(result1).toEqual(result2); // But same values
   });
 
-  golden("should be deterministic: same inputs → identical results", () => {
+  golden("should be deterministic: same inputs → identical results", async () => {
     const claim = createClaim({ claimText: "test" });
     const event = SEEDED_EVENTS[0];
     const faction = "historian";
 
-    const result1 = evaluateClaim(claim, event, faction);
-    const result2 = evaluateClaim(claim, event, faction);
+    const result1 = await evaluateClaim(claim, event, faction, embeddingService);
+    const result2 = await evaluateClaim(claim, event, faction, embeddingService);
 
     expect(JSON.stringify(result1)).toBe(JSON.stringify(result2));
   });
@@ -227,27 +231,27 @@ describe("Immutability & Purity (AC5)", () => {
 // ============================================================================
 
 describe("Integration: Full Credibility Flow (AC6)", () => {
-  it("should evaluate batch of claims", () => {
+  it("should evaluate batch of claims", async () => {
     const claims = [
       createAccurateClaim(SEEDED_EVENTS[0]),
       createAccurateClaim(SEEDED_EVENTS[1]),
       createAccurateClaim(SEEDED_EVENTS[2]),
     ];
 
-    const results = evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
+    const results = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
 
     expect(results.length).toBeGreaterThan(0);
     expect(results.every((r) => r.finalCredibility >= 0)).toBe(true);
     expect(results.every((r) => r.finalCredibility <= 100)).toBe(true);
   });
 
-  it("should handle insulting claims in batch", () => {
+  it("should handle insulting claims in batch", async () => {
     const claims = [
       createAccurateClaim(SEEDED_EVENTS[0]),
       createInsultingClaim(SEEDED_EVENTS[1], "historian"),
     ];
 
-    const results = evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
+    const results = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
 
     expect(results.length).toBe(2);
     expect(results[1].hasInsult).toBe(true);
@@ -255,14 +259,14 @@ describe("Integration: Full Credibility Flow (AC6)", () => {
     expect(results[1].penalty).toBeGreaterThanOrEqual(10);
   });
 
-  golden("should be deterministic: same seed → identical state hash", () => {
+  golden("should be deterministic: same seed → identical state hash", async () => {
     const claims = [
       createAccurateClaim(SEEDED_EVENTS[0]),
       createAccurateClaim(SEEDED_EVENTS[1]),
     ];
 
-    const results1 = evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
-    const results2 = evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
+    const results1 = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
+    const results2 = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
 
     const hash1 = hashGameState(results1);
     const hash2 = hashGameState(results2);
@@ -270,16 +274,16 @@ describe("Integration: Full Credibility Flow (AC6)", () => {
     expect(hash1).toBe(hash2);
   });
 
-  golden("should be deterministic: 100× identical results", () => {
-    assertDeterministic(() => {
+  golden("should be deterministic: 100× identical results", async () => {
+    await assertDeterministic(async () => {
       const claims = [createAccurateClaim(SEEDED_EVENTS[0])];
-      return evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
+      return await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
     }, 100);
   });
 
-  golden("should produce JSON-serializable results", () => {
+  golden("should produce JSON-serializable results", async () => {
     const claims = [createAccurateClaim(SEEDED_EVENTS[0])];
-    const results = evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian");
+    const results = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
 
     const json = JSON.stringify(results);
     const restored = JSON.parse(json);

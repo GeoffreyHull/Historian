@@ -11,6 +11,7 @@
  *  - Run completion + recap + next run (FR34-FR37)
  *  - JSON serialization throughout (Constraint 5)
  *  - Determinism (Constraint 9)
+ *  - Phase 2: executeTurn is async
  */
 
 import { describe, it, expect } from "vitest";
@@ -22,12 +23,12 @@ import { GameState, createEventId, createTurn } from "../types";
 
 describe("E2E: Full Game Flow", () => {
   describe("10-Turn Run Completion", () => {
-    it("should complete 10 turns and end run", () => {
+    it("should complete 10 turns and end run", async () => {
       let state = createInitialGameState("historian");
       let runEnded = false;
 
       for (let turnNum = 1; turnNum <= 10; turnNum++) {
-        const result = executeTurn(state, []);
+        const result = await executeTurn(state, []);
         if (result.runEnded) {
           runEnded = true;
           expect(turnNum).toBe(10);
@@ -39,29 +40,29 @@ describe("E2E: Full Game Flow", () => {
       expect(runEnded).toBe(true);
     });
 
-    it("should generate events for each turn", () => {
+    it("should generate events for each turn", async () => {
       let state = createInitialGameState("historian");
       let totalEvents = 0;
 
       for (let i = 1; i < 10; i++) {
-        const result = executeTurn(state, []);
+        const result = await executeTurn(state, []);
         totalEvents += result.events.length;
         state = result.updatedState;
       }
 
-      const lastResult = executeTurn(state, []);
+      const lastResult = await executeTurn(state, []);
       totalEvents += lastResult.events.length;
 
       // Each turn generates 3 events, 10 turns = 30 events
       expect(totalEvents).toBeGreaterThanOrEqual(20);
     });
 
-    it("should generate recap when run ends", () => {
+    it("should generate recap when run ends", async () => {
       let state = createInitialGameState("historian");
       let recap: any = null;
 
       for (let i = 1; i <= 10; i++) {
-        const result = executeTurn(state, []);
+        const result = await executeTurn(state, []);
         state = result.updatedState;
         if (result.recap) {
           recap = result.recap;
@@ -74,15 +75,14 @@ describe("E2E: Full Game Flow", () => {
   });
 
   describe("World Variable Changes Across Turns", () => {
-    it("should change world variables across 10 turns based on events", () => {
+    it("should change world variables across 10 turns based on events", async () => {
       let state = createInitialGameState("historian");
 
       for (let i = 1; i < 10; i++) {
-        const result = executeTurn(state, []);
-        state = result.updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
       const finalVars = result.updatedState.worldState.worldVariables;
 
       // Variables should have changed from default (50) due to event effects
@@ -92,16 +92,16 @@ describe("E2E: Full Game Flow", () => {
       expect(changed).toBe(true);
     });
 
-    it("should decay world variables between runs", () => {
+    it("should decay world variables between runs", async () => {
       let state = createInitialGameState("historian");
       const initialVars = state.worldState.worldVariables;
 
       // Modify variables by playing through a run
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const midRunResult = executeTurn(state, []);
+      const midRunResult = await executeTurn(state, []);
       // Variables may differ from initial due to events
       const midRunVars = midRunResult.updatedState.worldState.worldVariables;
 
@@ -119,12 +119,12 @@ describe("E2E: Full Game Flow", () => {
   });
 
   describe("Faction Trust Evolution", () => {
-    it("should not change faction trust when no claims are submitted", () => {
+    it("should not change faction trust when no claims are submitted", async () => {
       let state = createInitialGameState("historian");
       const initialTrust = state.factionTrust;
 
       for (let turnNum = 1; turnNum <= 5; turnNum++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
       // No claims = no credibility results = no trust deltas
@@ -133,11 +133,11 @@ describe("E2E: Full Game Flow", () => {
       }
     });
 
-    it("should not crash when no claims are submitted", () => {
+    it("should not crash when no claims are submitted", async () => {
       let state = createInitialGameState("historian");
 
       for (let i = 1; i <= 10; i++) {
-        const result = executeTurn(state, []);
+        const result = await executeTurn(state, []);
         state = result.updatedState;
         if (result.runEnded) break;
       }
@@ -147,7 +147,7 @@ describe("E2E: Full Game Flow", () => {
   });
 
   describe("Influence Accumulation", () => {
-    it("should accumulate influence when accurate claims are made", () => {
+    it("should accumulate influence when accurate claims are made", async () => {
       let state = createInitialGameState("historian");
       const startInfluence = state.influence;
 
@@ -156,21 +156,21 @@ describe("E2E: Full Game Flow", () => {
         const claims = eventForTurn
           ? [createAccurateClaim(eventForTurn)]
           : [];
-        state = executeTurn(state, claims).updatedState;
+        state = (await executeTurn(state, claims)).updatedState;
       }
 
       // Influence should have increased from accurate claims
       expect(state.influence).toBeGreaterThanOrEqual(startInfluence);
     });
 
-    it("should persist influence after run completion", () => {
+    it("should persist influence after run completion", async () => {
       let state = createInitialGameState("historian");
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(typeof result.updatedState.influence).toBe("number");
       expect(isFinite(result.updatedState.influence)).toBe(true);
@@ -178,11 +178,11 @@ describe("E2E: Full Game Flow", () => {
   });
 
   describe("State Serialization", () => {
-    it("should JSON-serialize state at every turn", () => {
+    it("should JSON-serialize state at every turn", async () => {
       let state = createInitialGameState("historian");
 
       for (let i = 1; i <= 10; i++) {
-        const result = executeTurn(state, []);
+        const result = await executeTurn(state, []);
         // Verify the state is serializable at each turn
         const serialized = JSON.stringify(result.updatedState);
         const deserialized = JSON.parse(serialized);
@@ -195,7 +195,7 @@ describe("E2E: Full Game Flow", () => {
   });
 
   describe("Determinism (Constraint 9)", () => {
-    golden("should produce identical state evolution for same seed + same actions", () => {
+    golden("should produce identical state evolution for same seed + same actions", async () => {
       const claims = [createClaim({ claimText: "test", eventId: createEventId("evt-1"), isAboutObservedEvent: true, turnNumber: 1 })];
 
       // Use a fixed seed world state for determinism
@@ -208,8 +208,8 @@ describe("E2E: Full Game Flow", () => {
       let s2 = createInitialGameState("historian", createTurn(1), fixedWorldState);
 
       for (let i = 1; i <= 3; i++) {
-        const r1 = executeTurn(s1, claims);
-        const r2 = executeTurn(s2, claims);
+        const r1 = await executeTurn(s1, claims);
+        const r2 = await executeTurn(s2, claims);
         states1.push(JSON.stringify(r1.updatedState));
         states2.push(JSON.stringify(r2.updatedState));
         s1 = r1.updatedState;
@@ -222,25 +222,25 @@ describe("E2E: Full Game Flow", () => {
   });
 
   describe("Turn Snapshots for Retcon", () => {
-    it("should accumulate turn snapshots during gameplay", () => {
+    it("should accumulate turn snapshots during gameplay", async () => {
       let state = createInitialGameState("historian");
 
       for (let i = 1; i <= 4; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
       // Should have snapshots for turns 1-4
       expect(state.turnSnapshots.length).toBeGreaterThanOrEqual(3);
     });
 
-    it("should clear turn snapshots on new run", () => {
+    it("should clear turn snapshots on new run", async () => {
       let state = createInitialGameState("historian");
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       // New run should have empty snapshots
       expect(result.updatedState.turnSnapshots).toEqual([]);

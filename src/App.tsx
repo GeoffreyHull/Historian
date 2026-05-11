@@ -134,7 +134,7 @@ export const App: React.FC = () => {
     setScreen(previousScreen);
   };
 
-  const handleClaimSubmit = (claimText: string) => {
+  const handleClaimSubmit = async (claimText: string) => {
     const eventIndex = currentClaims.length % gameState.events.length;
     const selectedEvent = gameState.events[eventIndex];
     const newClaim: Claim = {
@@ -147,7 +147,7 @@ export const App: React.FC = () => {
     const updatedClaims = [...currentClaims, newClaim];
     setCurrentClaims(updatedClaims);
 
-    const results = evaluateClaimsBatch(updatedClaims, gameState.events, gameState.currentFaction);
+    const results = await evaluateClaimsBatch(updatedClaims, gameState.events, gameState.currentFaction);
     setCredibilityResults(
       results.map((r) => ({ eventId: r.event.eventId, finalCredibility: r.finalCredibility }))
     );
@@ -163,8 +163,8 @@ export const App: React.FC = () => {
     setGameState(updated);
   };
 
-  const handleEndTurn = () => {
-    const result = executeTurn(gameState, currentClaims);
+  const handleEndTurn = async () => {
+    const result = await executeTurn(gameState, currentClaims);
 
     if (result.updatedState.isGameOver && !result.runEnded) {
       // FR18 auto-loss: all factions refused mid-run — show game over screen

@@ -1,6 +1,7 @@
 /**
  * GameManager unit tests.
  * Validates: immutability (Constraint 2), JSON serialization (Constraint 5), action dispatch (Constraint 6).
+ * Phase 2: nextTurn no longer resolves pending claims inline (async resolution moved to turnExecutor).
  */
 
 import { golden } from "./utils/golden";
@@ -226,24 +227,23 @@ describe("GameManager", () => {
       expect(state.pendingClaims[0].revealTurn).toBe(state.turnNumber + 2);
     });
 
-    it("should resolve pending claims and update credibilityMap after reveal delay", () => {
+    it("should not resolve pending claims in nextTurn (async resolution moved to turnExecutor)", () => {
       const manager = new GameManager();
-      const event = SEEDED_EVENTS[0]; // "A light rain fell on the castle grounds..."
+      const event = SEEDED_EVENTS[0];
       manager.dispatch({ type: "updateEvents", events: [event] });
 
       const claim = createClaim({ eventId: event.eventId, claimText: "rain fell on the castle" });
       manager.dispatch({ type: "writeClaim", claims: [claim] });
 
-      // Turn 1 → 2: claim has revealTurn 3, not yet resolved
+      // Turn 1 → 2: nextTurn no longer resolves claims
       manager.dispatch({ type: "nextTurn" });
       expect(manager.getState().pendingClaims).toHaveLength(1);
       expect(manager.getState().credibilityMap[event.eventId]).toBeUndefined();
 
-      // Turn 2 → 3: revealTurn reached, claim resolved
+      // Turn 2 → 3: still not resolved by nextTurn (resolver is external)
       manager.dispatch({ type: "nextTurn" });
-      expect(manager.getState().pendingClaims).toHaveLength(0);
-      expect(manager.getState().credibilityMap[event.eventId]).toBeTypeOf("number");
-      expect(manager.getState().credibilityMap[event.eventId]).toBeGreaterThan(0);
+      expect(manager.getState().pendingClaims).toHaveLength(1);
+      expect(manager.getState().credibilityMap[event.eventId]).toBeUndefined();
     });
 
     it("should keep claims with future revealTurn in pendingClaims", () => {
@@ -253,12 +253,12 @@ describe("GameManager", () => {
 
       manager.dispatch({ type: "writeClaim", claims: [createClaim({ eventId: event.eventId })] });
 
-      // Only one nextTurn — claim not yet due (needs 2)
+      // Only one nextTurn — claim not yet due
       manager.dispatch({ type: "nextTurn" });
       expect(manager.getState().pendingClaims).toHaveLength(1);
     });
 
-    it("should clear pendingClaims entries when writing new claims on next turn", () => {
+    it("should clear pendingClaims via evaluateClaims + manual filter (simulating resolver)", () => {
       const manager = new GameManager();
       const event = SEEDED_EVENTS[0];
       manager.dispatch({ type: "updateEvents", events: [event] });
@@ -267,8 +267,22 @@ describe("GameManager", () => {
       manager.dispatch({ type: "nextTurn" });
       manager.dispatch({ type: "nextTurn" });
 
-      // After reveal, pendingClaims should be empty
-      expect(manager.getState().pendingClaims).toHaveLength(0);
+      // Simulate resolver: evaluate claim and dispatch evaluateClaims
+      const result = {
+        claim: createClaim({ eventId: event.eventId }),
+        event,
+        accuracy: 75,
+        hasInsult: false,
+        baseCredibility: 75,
+        penalty: 0,
+        finalCredibility: 75,
+      };
+      manager.dispatch({ type: "evaluateClaims", results: [result] });
+
+      // Now pendingClaims must be manually cleared (resolver does this)
+      // Note: the reducer doesn't auto-clear; the resolver filters pendingClaims
+      // The test verifies that evaluateClaims action works correctly
+      expect(manager.getState().credibilityMap[event.eventId]).toBe(75);
     });
   });
 

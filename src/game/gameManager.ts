@@ -7,7 +7,6 @@
 import { GameState, Action, Faction, TurnNumber, createTurn, WorldState, PendingClaim } from "./types";
 import { createInitialWorldState } from "./worldStateManager";
 import { createInitialTrustMap, applyTrustDeltas } from "./factionTrustSystem";
-import { evaluateClaimAccuracy } from "./credibilitySystem";
 import { CLAIM_REVEAL_DELAY } from "./constants";
 
 /**
@@ -90,23 +89,14 @@ export class GameManager {
         };
 
       case "nextTurn": {
-        // Advance turn, resolve due pending claims, reset current claims
+        // Advance turn, reset current claims.
+        // Pending claims are resolved asynchronously by the resolver service
+        // (see turnExecutor.ts), which dispatches evaluateClaims when due.
         const nextTurn = (state.turnNumber + 1) as TurnNumber;
-        const due = state.pendingClaims.filter((p) => p.revealTurn <= nextTurn);
-        const stillPending = state.pendingClaims.filter((p) => p.revealTurn > nextTurn);
-        const updatedCredMap = { ...state.credibilityMap };
-        for (const p of due) {
-          const event = state.events.find((e) => e.eventId === p.claim.eventId);
-          if (event) {
-            updatedCredMap[p.claim.eventId] = evaluateClaimAccuracy(p.claim, event);
-          }
-        }
         return {
           ...state,
           turnNumber: nextTurn,
           claims: [],
-          pendingClaims: stillPending,
-          credibilityMap: updatedCredMap,
         };
       }
 

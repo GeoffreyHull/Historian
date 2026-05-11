@@ -3,49 +3,46 @@
  * Constraint 1: Pure functions (no I/O, no side effects).
  * Constraint 2: All outputs immutable.
  * Constraint 5: JSON serializable results.
+ *
+ * Phase 2: Async embedding service integration.
+ * Functions accept an optional EmbeddingService for dependency injection.
+ * Defaults to JaccardEmbeddingService (deterministic, dev-mode).
  */
 
 import { Claim, Event, CredibilityResult, Faction } from "./types";
-import { INSULTING_PHRASES, FACTION_MULTIPLIERS, STOP_WORDS } from "./constants";
-
-/**
- * Tokenize text: lowercase, strip punctuation, remove stop words and single chars.
- * Used by computeSemanticSimilarity for both claim and event description.
- */
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^\w\s]/g, " ")
-      .split(/\s+/)
-      .filter((w) => w.length > 1 && !STOP_WORDS.has(w))
-  );
-}
+import { INSULTING_PHRASES, FACTION_MULTIPLIERS } from "./constants";
+import {
+  EmbeddingService,
+  defaultEmbeddingService,
+} from "./embeddingService";
 
 /**
  * Compute semantic similarity between claim text and event description.
- * Phase 1: Jaccard similarity on stop-word-filtered token sets. Range [0, 100].
- * Phase 2 (follow-up): replace body with Transformers.js cosine similarity.
+ * Phase 2: Delegates to injected EmbeddingService (Transformers.js in production,
+ * Jaccard stub in tests). Default is synchronous Jaccard.
  */
-export function computeSemanticSimilarity(
+export async function computeSemanticSimilarity(
   claimText: string,
-  eventDescription: string
-): number {
-  if (!claimText || !eventDescription) return 0;
-  const claimTokens = tokenize(claimText);
-  const eventTokens = tokenize(eventDescription);
-  if (claimTokens.size === 0 || eventTokens.size === 0) return 0;
-  const intersection = [...claimTokens].filter((t) => eventTokens.has(t)).length;
-  const union = new Set([...claimTokens, ...eventTokens]).size;
-  return Math.round((intersection / union) * 100);
+  eventDescription: string,
+  embeddingService: EmbeddingService = defaultEmbeddingService
+): Promise<number> {
+  return embeddingService.computeSimilarity(claimText, eventDescription);
 }
 
 /**
  * Evaluate claim accuracy as semantic similarity to event description.
  * Returns [0, 100] — higher means the claim better captures the event's meaning.
  */
-export function evaluateClaimAccuracy(claim: Claim, event: Event): number {
-  return computeSemanticSimilarity(claim.claimText, event.description);
+export async function evaluateClaimAccuracy(
+  claim: Claim,
+  event: Event,
+  embeddingService?: EmbeddingService
+): Promise<number> {
+  return computeSemanticSimilarity(
+    claim.claimText,
+    event.description,
+    embeddingService
+  );
 }
 
 /**
@@ -78,8 +75,13 @@ export function calculateCredibility(similarity: number, penalty: number): numbe
  * Evaluate a single claim against an event.
  * Returns comprehensive credibility result.
  */
-export function evaluateClaim(claim: Claim, event: Event, faction: Faction): CredibilityResult {
-  const accuracy = evaluateClaimAccuracy(claim, event);
+export async function evaluateClaim(
+  claim: Claim,
+  event: Event,
+  faction: Faction,
+  embeddingService?: EmbeddingService
+): Promise<CredibilityResult> {
+  const accuracy = await evaluateClaimAccuracy(claim, event, embeddingService);
   const hasInsult = detectInsult(claim, faction);
   const penalty = calculatePenalty(accuracy, hasInsult);
   const finalCredibility = calculateCredibility(accuracy, penalty);
@@ -111,26 +113,28 @@ export function calculateInfluence(
  * Batch evaluate multiple claims.
  * Pure function: doesn't mutate inputs, returns new array.
  */
-export function evaluateClaimsBatch(
+export async function evaluateClaimsBatch(
   claims: readonly Claim[],
   events: readonly Event[],
-  faction: Faction
-): CredibilityResult[] {
-  return claims
-    .map((claim) => {
-      const event = events.find((e) => e.eventId === claim.eventId);
-      if (!event) {
-        return {
-          claim,
-          event: null as any,
-          accuracy: 0,
-          hasInsult: false,
-          baseCredibility: 0,
-          penalty: 0,
-          finalCredibility: 0,
-        };
-      }
-      return evaluateClaim(claim, event, faction);
-    })
-    .filter((result) => result.event);
+  faction: Faction,
+  embeddingService?: EmbeddingService
+): Promise<CredibilityResult[]> {
+  const results: CredibilityResult[] = [];
+  for (const claim of claims) {
+    const event = events.find((e) => e.eventId === claim.eventId);
+    if (!event) {
+      results.push({
+        claim,
+        event: null as any,
+        accuracy: 0,
+        hasInsult: false,
+        baseCredibility: 0,
+        penalty: 0,
+        finalCredibility: 0,
+      });
+      continue;
+    }
+    results.push(await evaluateClaim(claim, event, faction, embeddingService));
+  }
+  return results.filter((result) => result.event);
 }

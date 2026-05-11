@@ -2,6 +2,9 @@
  * TurnExecutor: Executes a single turn through all phases (FR31).
  * Constraint 1: Pure functions, no mutations.
  * Constraint 9: Explicit ordering: events → observation → claims → credibility → influence → world state update.
+ *
+ * Phase 2: Async embedding service integration.
+ * Pending claims are resolved asynchronously before turn events are generated.
  */
 
 import {
@@ -14,14 +17,16 @@ import {
   WorldState,
   RunRecap,
   TurnSnapshot,
+  PendingClaim,
 } from "./types";
 import { EventGenerator } from "./eventGenerator";
-import { evaluateClaimsBatch } from "./credibilitySystem";
+import { evaluateClaim, evaluateClaimsBatch } from "./credibilitySystem";
 import { aggregateInfluence } from "./influenceCalculator";
 import { updateWorldStateAfterRun, evolveToNextRun, applyEventVariableEffects, cascadeConsequences } from "./worldStateManager";
 import { computeTrustDeltas, applyTrustDeltas, isAutoLoss } from "./factionTrustSystem";
 import { generateRunRecap, formatHistoryBook } from "./recapGenerator";
 import { GameManager } from "./gameManager";
+import { EmbeddingService, defaultEmbeddingService } from "./embeddingService";
 
 /**
  * TurnPhaseResult: Result of executing a single turn phase.
@@ -35,8 +40,46 @@ export interface TurnPhaseResult {
 }
 
 /**
+ * Resolve due pending claims asynchronously using embedding service.
+ * Called at the start of executeTurn before new events are generated.
+ */
+async function resolveDuePendingClaims(
+  state: GameState,
+  embeddingService: EmbeddingService
+): Promise<GameState> {
+  const dueClaims = state.pendingClaims.filter(
+    (p) => p.revealTurn <= state.turnNumber
+  );
+  if (dueClaims.length === 0) return state;
+
+  const results: CredibilityResult[] = [];
+  for (const pc of dueClaims) {
+    const event = state.events.find((e) => e.eventId === pc.claim.eventId);
+    if (event) {
+      results.push(
+        await evaluateClaim(pc.claim, event, state.currentFaction, embeddingService)
+      );
+    }
+  }
+
+  const updatedCredMap = { ...state.credibilityMap };
+  for (const r of results) {
+    updatedCredMap[r.event.eventId] = r.finalCredibility;
+  }
+
+  return {
+    ...state,
+    credibilityMap: updatedCredMap,
+    pendingClaims: state.pendingClaims.filter(
+      (p) => p.revealTurn > state.turnNumber
+    ),
+  };
+}
+
+/**
  * ExecuteTurn: Process a complete turn for the given state.
  * Phases:
+ * 0. Resolve due pending claims (async, Phase 2)
  * 1. Generate events for this turn
  * 2. Determine observation
  * 3. Evaluate player claims
@@ -45,37 +88,40 @@ export interface TurnPhaseResult {
  * 6. Check if run (10 turns) is complete
  * 7. If complete, generate recap and prepare next run
  */
-export function executeTurn(
+export async function executeTurn(
   gameState: GameState,
-  playerClaims: Claim[]
-): TurnPhaseResult {
-  const currentTurn = gameState.turnNumber;
+  playerClaims: Claim[],
+  embeddingService: EmbeddingService = defaultEmbeddingService
+): Promise<TurnPhaseResult> {
+  // Phase 0: Resolve due pending claims (async - Phase 2)
+  const resolvedState = await resolveDuePendingClaims(gameState, embeddingService);
+  const currentTurn = resolvedState.turnNumber;
 
   // FR46-FR47: Use world's initial seed for deterministic event generation across run resumptions
   // Constraint 9: Turn-phase determinism requires seed stability, not turn-based variation
-  const deterministicSeed = gameState.worldState.initialSeed + currentTurn;
+  const deterministicSeed = resolvedState.worldState.initialSeed + currentTurn;
   const eventGenerator = new EventGenerator(deterministicSeed);
 
   // Phase 1: Generate events for this turn (FR20: honour any pending forced event type)
-  eventGenerator.setWorldState(gameState.worldState, gameState.currentFaction);
-  const events = eventGenerator.generateEvents(currentTurn, 3, gameState.pendingForcedEventType);
+  eventGenerator.setWorldState(resolvedState.worldState, resolvedState.currentFaction);
+  const events = eventGenerator.generateEvents(currentTurn, 3, resolvedState.pendingForcedEventType);
 
   // Save turn snapshot for retcon (before claims are processed)
   const snapshot: TurnSnapshot = {
     turnNumber: currentTurn,
     events,
-    claims: gameState.claims,
-    influence: gameState.influence,
-    factionTrust: { ...gameState.factionTrust },
-    credibilityMap: { ...gameState.credibilityMap },
-    worldState: gameState.worldState,
+    claims: resolvedState.claims,
+    influence: resolvedState.influence,
+    factionTrust: { ...resolvedState.factionTrust },
+    credibilityMap: { ...resolvedState.credibilityMap },
+    worldState: resolvedState.worldState,
   };
 
   // Phase 2: Observation is already determined (set in events)
   // No changes needed; EventGenerator sets observedByPlayer
 
   // Create a manager to handle state updates
-  const manager = new GameManager(gameState);
+  const manager = new GameManager(resolvedState);
 
   // Phase 3: Evaluate player claims (FR8: limit to 1-3 claims per turn)
   let credibilityResults: CredibilityResult[] = [];
@@ -84,12 +130,17 @@ export function executeTurn(
     console.warn(`Truncated ${playerClaims.length} claims to 3-claim limit (FR8)`);
   }
   if (validatedClaims.length > 0) {
-    credibilityResults = evaluateClaimsBatch(validatedClaims, events, gameState.currentFaction);
+    credibilityResults = await evaluateClaimsBatch(
+      validatedClaims,
+      events,
+      resolvedState.currentFaction,
+      embeddingService
+    );
     manager.dispatch({ type: "evaluateClaims", results: credibilityResults });
   }
 
   // Phase 4: Calculate influence earned this turn (FR19)
-  const influenceEarned = aggregateInfluence(credibilityResults, gameState.currentFaction);
+  const influenceEarned = aggregateInfluence(credibilityResults, resolvedState.currentFaction);
 
   // Get state after claim evaluation and apply influence
   let state = manager.getState();
@@ -97,7 +148,7 @@ export function executeTurn(
 
   // Phase 4b: Update faction trust based on credibility results (FR15-FR18)
   // Pass world variables so faction reactions cascade from world state
-  const trustDeltas = computeTrustDeltas(credibilityResults, gameState.currentFaction, gameState.worldState.worldVariables);
+  const trustDeltas = computeTrustDeltas(credibilityResults, resolvedState.currentFaction, resolvedState.worldState.worldVariables);
   const updatedTrust = applyTrustDeltas(state.factionTrust, trustDeltas);
   // FR20: clear pending forced event type — it was consumed when generating this turn's events
   state = { ...state, factionTrust: updatedTrust, pendingForcedEventType: null };

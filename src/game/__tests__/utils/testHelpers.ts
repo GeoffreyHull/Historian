@@ -1,6 +1,7 @@
 /**
  * Test utilities for parametrized testing, immutability checks, and determinism validation.
  * Supports S4 credibility system testing with 120+ parametrized test cases.
+ * Phase 2: assertDeterministic supports async functions.
  */
 
 import { Claim, Event, CredibilityResult } from "../../types";
@@ -41,16 +42,17 @@ export function assertImmutable<T extends object>(
 /**
  * assertDeterministic: Verify that a function produces identical output
  * when called multiple times with identical inputs.
+ * Supports both sync and async functions.
  * Calls function repeatCount times (default 100), compares all outputs.
  */
-export function assertDeterministic<T>(
-  fn: () => T,
+export async function assertDeterministic<T>(
+  fn: () => T | Promise<T>,
   repeatCount: number = 100
-): void {
+): Promise<void> {
   const results: string[] = [];
 
   for (let i = 0; i < repeatCount; i++) {
-    const result = fn();
+    const result = await fn();
     results.push(JSON.stringify(result));
   }
 

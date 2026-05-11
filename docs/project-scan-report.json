@@ -1,0 +1,16 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-05-10T12:00:00Z",
+    "last_updated": "2026-05-10T12:00:00Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "C:\\Users\\hullg\\Documents\\Github\\Historian",
+  "project_knowledge": "C:\\Users\\hullg\\Documents\\Github\\Historian\\docs",
+  "completed_steps": [],
+  "current_step": "step_1",
+  "findings": {},
+  "outputs_generated": ["project-scan-report.json"],
+  "resume_instructions": "Starting from step 1"
+}

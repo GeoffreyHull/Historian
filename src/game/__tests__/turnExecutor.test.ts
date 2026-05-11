@@ -2,6 +2,7 @@
  * Tests for turn executor (Epic 6: Complete & Persist Game Sessions).
  * Validates: FR30-FR34 (turn flow, 10-turn structure, run completion)
  * Constraints: C1 (pure functions), C5 (JSON serialization), C9 (determinism)
+ * Phase 2: executeTurn is async.
  */
 
 import { describe, it, expect } from "vitest";
@@ -21,7 +22,7 @@ import { golden } from "./utils/golden";
 
 describe("[G] Turn Executor - Epic 6 Tests", () => {
   describe("AC5: Immutability & Purity", () => {
-    it("[G] should never mutate input game state when executing turn", () => {
+    it("[G] should never mutate input game state when executing turn", async () => {
       const original = createInitialGameState();
       const frozen = JSON.parse(JSON.stringify(original));
 
@@ -34,13 +35,13 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         }),
       ];
 
-      const result = executeTurn(original, claims);
+      const result = await executeTurn(original, claims);
 
       expect(JSON.stringify(original)).toBe(JSON.stringify(frozen));
       expect(result.updatedState.turnNumber).toBe(2);
     });
 
-    it("[G] should produce identical results for identical inputs", () => {
+    it("[G] should produce identical results for identical inputs", async () => {
       const state = createInitialGameState();
       const claims = [
         createClaim({
@@ -53,7 +54,7 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
 
       const results = [];
       for (let i = 0; i < 5; i++) {
-        const result = executeTurn(state, claims);
+        const result = await executeTurn(state, claims);
         results.push(JSON.stringify(result.updatedState));
       }
 
@@ -75,23 +76,23 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
   });
 
   describe("FR30-FR31: Turn flow and 10-turn runs", () => {
-    it("should advance turn from 1 to 2", () => {
+    it("should advance turn from 1 to 2", async () => {
       const state = createInitialGameState();
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.turnNumber).toBe(2);
       expect(result.runEnded).toBe(false);
     });
 
-    it("should generate events for each turn", () => {
+    it("should generate events for each turn", async () => {
       const state = createInitialGameState();
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.events.length).toBeGreaterThan(0);
       expect(result.events[0].turnNumber).toBe(1);
     });
 
-    it("should clear claims after turn execution", () => {
+    it("should clear claims after turn execution", async () => {
       const state = {
         ...createInitialGameState(),
         claims: [
@@ -104,12 +105,12 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         ],
       };
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.claims.length).toBe(0);
     });
 
-    it("should track credibility results from claims", () => {
+    it("should track credibility results from claims", async () => {
       const state = createInitialGameState();
       const claims = [
         createClaim({
@@ -120,75 +121,75 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         }),
       ];
 
-      const result = executeTurn(state, claims);
+      const result = await executeTurn(state, claims);
 
       expect(result.credibilityResults.length).toBeGreaterThanOrEqual(0);
     });
   });
 
   describe("FR34: Run completion at turn 10", () => {
-    it("should end run after 10 turns", () => {
+    it("should end run after 10 turns", async () => {
       let state = createInitialGameState();
 
       // Execute 9 turns without ending
       for (let i = 1; i < 10; i++) {
-        const result = executeTurn(state, []);
+        const result = await executeTurn(state, []);
         expect(result.runEnded).toBe(false);
         state = result.updatedState;
       }
 
       // 10th turn should end the run
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
       expect(result.runEnded).toBe(true);
     });
 
-    it("should generate recap on run completion", () => {
+    it("should generate recap on run completion", async () => {
       let state = createInitialGameState();
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.recap).toBeDefined();
       expect(result.recap?.runNumber).toBe(1);
     });
 
-    it("should reset game state for next run after completion", () => {
+    it("should reset game state for next run after completion", async () => {
       let state = createInitialGameState();
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.turnNumber).toBe(1);
       expect(result.updatedState.claims.length).toBe(0);
       expect(result.updatedState.events.length).toBe(0);
     });
 
-    it("should increment world run number after run completion", () => {
+    it("should increment world run number after run completion", async () => {
       let state = createInitialGameState();
       const initialRunNumber = state.worldState.runNumber;
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
       expect(result.updatedState.worldState.runNumber).toBeGreaterThan(initialRunNumber);
     });
 
-    it("should add recap to history", () => {
+    it("should add recap to history", async () => {
       let state = createInitialGameState();
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
       const historyLength = result.updatedState.worldState.history.length;
 
       expect(historyLength).toBeGreaterThan(0);
@@ -205,11 +206,11 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
       expect(summary.isRunComplete).toBe(false);
     });
 
-    it("should report zero remaining turns at turn 10", () => {
+    it("should report zero remaining turns at turn 10", async () => {
       let state = createInitialGameState();
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
       const summary = getRunSummary(state);
@@ -239,9 +240,9 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
   });
 
   describe("Constraint 5: JSON Serialization", () => {
-    it("[G] should serialize turn result without data loss", () => {
+    it("[G] should serialize turn result without data loss", async () => {
       const state = createInitialGameState();
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       const serialized = JSON.stringify(result.updatedState);
       const deserialized = JSON.parse(serialized);
@@ -251,16 +252,16 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
   });
 
   describe("FR19: Influence Calculation Integration", () => {
-    it("should not change influence when no claims are made", () => {
+    it("should not change influence when no claims are made", async () => {
       const state = createInitialGameState();
       const initialInfluence = state.influence;
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.influence).toBe(initialInfluence);
     });
 
-    it("should increase influence after submitting claims", () => {
+    it("should increase influence after submitting claims", async () => {
       const state = createInitialGameState();
       const initialInfluence = state.influence;
 
@@ -273,13 +274,13 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         }),
       ];
 
-      const result = executeTurn(state, claims);
+      const result = await executeTurn(state, claims);
 
       // credibility is non-negative, so influence can only stay or increase
       expect(result.updatedState.influence).toBeGreaterThanOrEqual(initialInfluence);
     });
 
-    it("should accumulate influence across multiple turns", () => {
+    it("should accumulate influence across multiple turns", async () => {
       let state = createInitialGameState();
 
       for (let i = 1; i <= 3; i++) {
@@ -291,14 +292,14 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
             turnNumber: i as ReturnType<typeof createTurn>,
           }),
         ];
-        state = executeTurn(state, claims).updatedState;
+        state = (await executeTurn(state, claims)).updatedState;
       }
 
       // After 3 turns with claims the influence should still be >= initial 50
       expect(state.influence).toBeGreaterThanOrEqual(50);
     });
 
-    it("should not mutate input state when calculating influence", () => {
+    it("should not mutate input state when calculating influence", async () => {
       const state = createInitialGameState();
       const frozen = JSON.parse(JSON.stringify(state)) as typeof state;
 
@@ -311,12 +312,12 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         }),
       ];
 
-      executeTurn(state, claims);
+      await executeTurn(state, claims);
 
       expect(JSON.stringify(state)).toBe(JSON.stringify(frozen));
     });
 
-    it("should produce deterministic influence for identical inputs", () => {
+    it("should produce deterministic influence for identical inputs", async () => {
       const state = createInitialGameState();
       const claims = [
         createClaim({
@@ -327,7 +328,9 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         }),
       ];
 
-      const results = Array.from({ length: 5 }, () => executeTurn(state, claims));
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => executeTurn(state, claims))
+      );
 
       const firstInfluence = results[0].updatedState.influence;
       for (const r of results.slice(1)) {
@@ -335,11 +338,11 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
       }
     });
 
-    it("should keep influence in state after run completion", () => {
+    it("should keep influence in state after run completion", async () => {
       let state = createInitialGameState();
 
       for (let i = 1; i < 10; i++) {
-        state = executeTurn(state, []).updatedState;
+        state = (await executeTurn(state, [])).updatedState;
       }
 
       const claims = [
@@ -351,7 +354,7 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         }),
       ];
 
-      const result = executeTurn(state, claims);
+      const result = await executeTurn(state, claims);
 
       expect(result.runEnded).toBe(true);
       expect(typeof result.updatedState.influence).toBe("number");
@@ -360,7 +363,7 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
   });
 
   describe("FR17-FR18: Game Over / Loss Condition", () => {
-    golden("should set isGameOver when all factions refuse (trust < -100)", () => {
+    golden("should set isGameOver when all factions refuse (trust < -100)", async () => {
       const allRefusingTrust = {
         historian: -150,
         scholar: -150,
@@ -375,13 +378,13 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         factionTrust: allRefusingTrust,
       };
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.isGameOver).toBe(true);
       expect(result.runEnded).toBe(false);
     });
 
-    it("should not set isGameOver when only some factions refuse", () => {
+    it("should not set isGameOver when only some factions refuse", async () => {
       const partialRefuseTrust = {
         historian: -150,
         scholar: 10,
@@ -396,20 +399,20 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
         factionTrust: partialRefuseTrust,
       };
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.isGameOver).toBe(false);
     });
 
-    it("should preserve isGameOver=false when no auto-loss", () => {
+    it("should preserve isGameOver=false when no auto-loss", async () => {
       const state = createInitialGameState();
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
       expect(result.updatedState.isGameOver).toBe(false);
     });
   });
 
   describe("State Persistence Across Turns", () => {
-    golden("should preserve faction trust updates across turns (not reset by manager state)", () => {
+    golden("should preserve faction trust updates across turns (not reset by manager state)", async () => {
       const startingTrust = {
         historian: -50,
         scholar: -50,
@@ -425,31 +428,31 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
       };
 
       // Execute 2 turns without claims (trust deltas should be ~0 with no credibility results)
-      const result1 = executeTurn(state, []);
-      const result2 = executeTurn(result1.updatedState, []);
+      const result1 = await executeTurn(state, []);
+      const result2 = await executeTurn(result1.updatedState, []);
 
       // Trust should persist (not reset to initial 0) across turns
       expect(result1.updatedState.factionTrust.historian).toBe(startingTrust.historian);
       expect(result2.updatedState.factionTrust.historian).toBe(startingTrust.historian);
     });
 
-    golden("should preserve influence updates across turns (not reset by manager state)", () => {
+    golden("should preserve influence updates across turns (not reset by manager state)", async () => {
       const state = { ...createInitialGameState(), influence: 10 };
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       // Influence should persist at 10 (no claims = no influence earned)
       expect(result.updatedState.influence).toBe(10);
     });
 
-    it("should clear pendingForcedEventType after turn executes", () => {
+    it("should clear pendingForcedEventType after turn executes", async () => {
       const state = {
         ...createInitialGameState(),
         pendingForcedEventType: "weather",
         influence: 100,
       };
 
-      const result = executeTurn(state, []);
+      const result = await executeTurn(state, []);
 
       expect(result.updatedState.pendingForcedEventType).toBeNull();
     });
