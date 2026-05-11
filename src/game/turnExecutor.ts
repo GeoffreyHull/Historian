@@ -96,7 +96,8 @@ async function resolveDuePendingClaims(
 export async function executeTurn(
   gameState: GameState,
   playerClaims: Claim[],
-  embeddingService: EmbeddingService = defaultEmbeddingService
+  embeddingService: EmbeddingService = defaultEmbeddingService,
+  preGeneratedEvents?: Event[]
 ): Promise<TurnPhaseResult> {
   // Phase 0: Resolve due pending claims (async - Phase 2)
   const { state: resolvedState, resolvedResults: resolvedPendingResults } =
@@ -109,8 +110,11 @@ export async function executeTurn(
   const eventGenerator = new EventGenerator(deterministicSeed);
 
   // Phase 1: Generate events for this turn (FR20: honour any pending forced event type)
+  // Use pre-generated (possibly LLM-enriched) events if provided, so claim evaluation
+  // uses the same descriptions the player saw.
   eventGenerator.setWorldState(resolvedState.worldState, resolvedState.currentFaction);
-  const events = eventGenerator.generateEvents(currentTurn, 3, resolvedState.pendingForcedEventType);
+  const events =
+    preGeneratedEvents ?? eventGenerator.generateEvents(currentTurn, 3, resolvedState.pendingForcedEventType);
 
   // Save turn snapshot for retcon (before claims are processed)
   const snapshot: TurnSnapshot = {

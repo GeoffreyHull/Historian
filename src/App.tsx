@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
 import { executeTurn } from "./game/turnExecutor";
-import { Claim, CredibilityResult, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
+import { LLMEventWriterService } from "./game/eventWriterService";
+import { Claim, CredibilityResult, Event, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
 import { CLAIM_REVEAL_DELAY } from "./game/constants";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
 import { buildHistoryBookData } from "./game/historyBookUtils";
@@ -23,12 +24,28 @@ import styles from "./App.module.css";
 
 type Screen = "menu" | "playing" | "recap" | "history" | "game_over";
 
-function generateEventsForState(state: GameState) {
+function generateBaseEventsForState(state: GameState): Event[] {
   const seed = state.worldState.initialSeed + state.turnNumber;
   const gen = new EventGenerator(seed);
   gen.setWorldState(state.worldState, state.currentFaction);
   return gen.generateEvents(state.turnNumber, 3);
 }
+
+async function generateEventsForState(
+  state: GameState,
+  writerService: LLMEventWriterService | null
+): Promise<Event[]> {
+  const base = generateBaseEventsForState(state);
+  if (!writerService) return base;
+  try {
+    return await writerService.enrichEvents(base, state.turnNumber, state.currentFaction);
+  } catch {
+    return base;
+  }
+}
+
+const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
+const llmWriter = apiKey ? new LLMEventWriterService(apiKey) : null;
 
 export const App: React.FC = () => {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -43,6 +60,9 @@ export const App: React.FC = () => {
   const [isInRetcon, setIsInRetcon] = useState<boolean>(false);
   const [retconTargetTurn, setRetconTargetTurn] = useState<TurnNumber | null>(null);
   const [retconOriginalSnapshot, setRetconOriginalSnapshot] = useState<TurnSnapshot | null>(null);
+  const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(false);
+  // Track the events shown this turn so executeTurn evaluates claims against the same text
+  const currentEventsRef = useRef<Event[]>([]);
 
   // Clear save message after 3 seconds
   useEffect(() => {
@@ -51,15 +71,17 @@ export const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [saveMessage]);
 
-  const handleEnterRetcon = (targetTurn: TurnNumber) => {
+  const handleEnterRetcon = async (targetTurn: TurnNumber) => {
     if (!canRetcon(gameState, targetTurn)) return;
-    // Save a snapshot of the current moment for cancel
     const snapshot = takeSnapshot(gameState);
     setRetconOriginalSnapshot(snapshot);
     setRetconTargetTurn(targetTurn);
     setIsInRetcon(true);
     const rewound = enterRetcon(gameState, targetTurn);
-    const events = generateEventsForState(rewound);
+    setIsLoadingEvents(true);
+    const events = await generateEventsForState(rewound, llmWriter);
+    setIsLoadingEvents(false);
+    currentEventsRef.current = events;
     setGameState({ ...rewound, events });
     setCurrentClaims([]);
     setResolvedClaimResults([]);
@@ -74,10 +96,13 @@ export const App: React.FC = () => {
     setRetconOriginalSnapshot(null);
   };
 
-  const handleCancelRetcon = () => {
+  const handleCancelRetcon = async () => {
     if (!retconOriginalSnapshot) return;
     const restored = cancelRetcon(gameState, retconOriginalSnapshot);
-    const events = generateEventsForState(restored);
+    setIsLoadingEvents(true);
+    const events = await generateEventsForState(restored, llmWriter);
+    setIsLoadingEvents(false);
+    currentEventsRef.current = events;
     setGameState({ ...restored, events });
     setCurrentClaims([]);
     setResolvedClaimResults([]);
@@ -86,9 +111,12 @@ export const App: React.FC = () => {
     setRetconOriginalSnapshot(null);
   };
 
-  const handleStartGame = (faction: Faction) => {
+  const handleStartGame = async (faction: Faction) => {
     const initial = createInitialGameState(faction);
-    const events = generateEventsForState(initial);
+    setIsLoadingEvents(true);
+    const events = await generateEventsForState(initial, llmWriter);
+    setIsLoadingEvents(false);
+    currentEventsRef.current = events;
     setGameState({ ...initial, events });
     setCurrentClaims([]);
     setResolvedClaimResults([]);
@@ -100,10 +128,13 @@ export const App: React.FC = () => {
     setScreen("playing");
   };
 
-  const handleContinueGame = () => {
+  const handleContinueGame = async () => {
     const saved = loadGameState();
     if (!saved) return;
-    const events = generateEventsForState(saved);
+    setIsLoadingEvents(true);
+    const events = await generateEventsForState(saved, llmWriter);
+    setIsLoadingEvents(false);
+    currentEventsRef.current = events;
     setGameState({ ...saved, events });
     setCurrentClaims([]);
     setResolvedClaimResults([]);
@@ -163,17 +194,27 @@ export const App: React.FC = () => {
   };
 
   const handleEndTurn = async () => {
-    const result = await executeTurn(gameState, currentClaims);
+    setIsLoadingEvents(true);
+    const result = await executeTurn(
+      gameState,
+      currentClaims,
+      undefined,
+      currentEventsRef.current.length > 0 ? currentEventsRef.current : undefined
+    );
 
     if (result.updatedState.isGameOver && !result.runEnded) {
+      setIsLoadingEvents(false);
       setGameState(result.updatedState);
       setScreen("game_over");
     } else if (result.runEnded && result.recap) {
+      setIsLoadingEvents(false);
       setRecap(result.recap);
       setNextRunState(result.updatedState);
       setScreen("recap");
     } else {
-      const events = generateEventsForState(result.updatedState);
+      const events = await generateEventsForState(result.updatedState, llmWriter);
+      setIsLoadingEvents(false);
+      currentEventsRef.current = events;
       setGameState({ ...result.updatedState, events });
       setCurrentClaims([]);
       setResolvedClaimResults(result.resolvedPendingResults);
@@ -189,9 +230,12 @@ export const App: React.FC = () => {
     setScreen("menu");
   };
 
-  const handleContinueAfterRecap = () => {
+  const handleContinueAfterRecap = async () => {
     if (nextRunState) {
-      const events = generateEventsForState(nextRunState);
+      setIsLoadingEvents(true);
+      const events = await generateEventsForState(nextRunState, llmWriter);
+      setIsLoadingEvents(false);
+      currentEventsRef.current = events;
       setGameState({ ...nextRunState, events });
     }
     setCurrentClaims([]);
@@ -465,11 +509,11 @@ export const App: React.FC = () => {
             <button
               className={styles.endTurnButton}
               onClick={handleEndTurn}
-              disabled={currentClaims.length === 0}
+              disabled={currentClaims.length === 0 || isLoadingEvents}
             >
-              End Turn {gameState.turnNumber} →
+              {isLoadingEvents ? "Writing history..." : `End Turn ${gameState.turnNumber} →`}
             </button>
-            {currentClaims.length === 0 && (
+            {currentClaims.length === 0 && !isLoadingEvents && (
               <p className={styles.endTurnHint}>Write at least one claim to end the turn</p>
             )}
           </div>
