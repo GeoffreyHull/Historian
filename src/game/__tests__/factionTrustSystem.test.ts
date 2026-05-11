@@ -37,7 +37,7 @@ function makeResult(
   return {
     claim,
     event,
-    accuracy: finalCredibility >= 50 ? "correct" : "incorrect",
+    accuracy: finalCredibility,
     hasInsult,
     baseCredibility: 50,
     penalty: Math.max(0, 50 - finalCredibility),

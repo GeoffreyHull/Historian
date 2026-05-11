@@ -7,10 +7,33 @@
 export type EventId = string & { readonly __brand: "EventId" };
 export type TurnNumber = number;
 export type TruthValue = "true" | "false";
+export type ClaimReliability = "high" | "medium" | "low";
 export type Faction = "historian" | "scholar" | "witness" | "scribe" | "diplomat" | "rebel" | "merchant";
 
 export const createEventId = (id: string): EventId => id as EventId;
 export const createTurn = (turn: number): TurnNumber => turn;
+
+/**
+ * EvidenceFragment: A named witness or source account attached to an event.
+ * Players see available fragments before writing their claim.
+ */
+export interface EvidenceFragment {
+  readonly witnessName: string;
+  readonly role: string;
+  readonly account: string;
+  readonly reliability: ClaimReliability;
+  readonly available: boolean;
+}
+
+/**
+ * PendingClaim: A claim awaiting retroactive score revelation.
+ * Score is hidden until revealTurn; revealed automatically by nextTurn.
+ */
+export interface PendingClaim {
+  readonly claim: Claim;
+  readonly evidenceFragments: readonly EvidenceFragment[];
+  readonly revealTurn: TurnNumber;
+}
 
 /**
  * Event: Represents a historical event that occurred in the world.
@@ -22,6 +45,7 @@ export interface Event {
   readonly truthValue: TruthValue; // The ground truth: "true" or "false"
   readonly turnNumber: TurnNumber; // Turn when event occurred
   readonly observedByPlayer: boolean; // Whether player witnessed this event
+  readonly evidenceFragments: readonly EvidenceFragment[]; // Named witness accounts
 }
 
 /**
@@ -40,7 +64,7 @@ export interface Claim {
 export interface CredibilityResult {
   readonly claim: Claim;
   readonly event: Event;
-  readonly accuracy: "correct" | "incorrect"; // Was the claim accurate?
+  readonly accuracy: number; // [0, 100] semantic similarity to event description
   readonly hasInsult: boolean; // Did the claim contain an insult?
   readonly baseCredibility: number; // [0, 100]
   readonly penalty: number; // [0, 100] credibility reduction
@@ -150,6 +174,7 @@ export interface GameState {
   readonly worldState: WorldState; // Persistent state across runs
   readonly pendingForcedEventType: string | null; // FR20: event type guaranteed next turn (null = none)
   readonly turnSnapshots: readonly TurnSnapshot[]; // History of turn snapshots for retcon
+  readonly pendingClaims: readonly PendingClaim[]; // Claims awaiting retroactive score revelation
 }
 
 /**

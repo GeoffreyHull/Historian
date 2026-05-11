@@ -90,6 +90,40 @@ describe("EventGenerator", () => {
     expect(events.every((e) => validTypes.includes(e.eventType))).toBe(true);
   });
 
+  it("should attach exactly 3 evidence fragments to each event", () => {
+    const gen = new EventGenerator(42);
+    const events = gen.generateEvents(1 as any, 5);
+
+    for (const event of events) {
+      expect(event.evidenceFragments).toHaveLength(3);
+    }
+  });
+
+  it("should produce fragments with all required fields", () => {
+    const gen = new EventGenerator(42);
+    const [event] = gen.generateEvents(1 as any, 1);
+
+    for (const frag of event.evidenceFragments) {
+      expect(typeof frag.witnessName).toBe("string");
+      expect(typeof frag.role).toBe("string");
+      expect(typeof frag.account).toBe("string");
+      expect(["high", "medium", "low"]).toContain(frag.reliability);
+      expect(typeof frag.available).toBe("boolean");
+    }
+  });
+
+  it("should produce deterministic fragments with same seed", () => {
+    const gen1 = new EventGenerator(42);
+    const events1 = gen1.generateEvents(1 as any, 3);
+
+    const gen2 = new EventGenerator(42);
+    const events2 = gen2.generateEvents(1 as any, 3);
+
+    events1.forEach((e1, i) => {
+      expect(e1.evidenceFragments).toEqual(events2[i].evidenceFragments);
+    });
+  });
+
   it("should mark events with observation flags", () => {
     const gen = new EventGenerator(42);
     const events = gen.generateEvents(1 as any, 20);

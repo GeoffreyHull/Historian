@@ -4,9 +4,11 @@
  * Constraint 2 (immutability) + Constraint 5 (JSON serializable) + Constraint 6 (action dispatch).
  */
 
-import { GameState, Action, Faction, TurnNumber, createTurn, WorldState } from "./types";
+import { GameState, Action, Faction, TurnNumber, createTurn, WorldState, PendingClaim } from "./types";
 import { createInitialWorldState } from "./worldStateManager";
 import { createInitialTrustMap, applyTrustDeltas } from "./factionTrustSystem";
+import { evaluateClaimAccuracy } from "./credibilitySystem";
+import { CLAIM_REVEAL_DELAY } from "./constants";
 
 /**
  * Create initial game state.
@@ -28,6 +30,7 @@ export function createInitialGameState(
     worldState: worldState ?? createInitialWorldState(),
     pendingForcedEventType: null,
     turnSnapshots: [],
+    pendingClaims: [],
   };
 }
 
@@ -60,12 +63,20 @@ export class GameManager {
    */
   private reduce(state: GameState, action: Action): GameState {
     switch (action.type) {
-      case "writeClaim":
-        // S3 writes claims; store them in state
+      case "writeClaim": {
+        // Store claims and create pending records for retroactive revelation
+        const newPending: PendingClaim[] = action.claims.map((claim) => ({
+          claim,
+          evidenceFragments:
+            state.events.find((e) => e.eventId === claim.eventId)?.evidenceFragments ?? [],
+          revealTurn: (state.turnNumber + CLAIM_REVEAL_DELAY) as TurnNumber,
+        }));
         return {
           ...state,
           claims: [...state.claims, ...action.claims],
+          pendingClaims: [...state.pendingClaims, ...newPending],
         };
+      }
 
       case "evaluateClaims":
         // S4 evaluates claims and updates credibility map
@@ -78,13 +89,26 @@ export class GameManager {
           credibilityMap: newCredibilityMap,
         };
 
-      case "nextTurn":
-        // Advance turn and reset claims
+      case "nextTurn": {
+        // Advance turn, resolve due pending claims, reset current claims
+        const nextTurn = (state.turnNumber + 1) as TurnNumber;
+        const due = state.pendingClaims.filter((p) => p.revealTurn <= nextTurn);
+        const stillPending = state.pendingClaims.filter((p) => p.revealTurn > nextTurn);
+        const updatedCredMap = { ...state.credibilityMap };
+        for (const p of due) {
+          const event = state.events.find((e) => e.eventId === p.claim.eventId);
+          if (event) {
+            updatedCredMap[p.claim.eventId] = evaluateClaimAccuracy(p.claim, event);
+          }
+        }
         return {
           ...state,
-          turnNumber: (state.turnNumber + 1) as TurnNumber,
-          claims: [], // Clear claims for next turn
+          turnNumber: nextTurn,
+          claims: [],
+          pendingClaims: stillPending,
+          credibilityMap: updatedCredMap,
         };
+      }
 
       case "updateEvents":
         // S2: Add events to state

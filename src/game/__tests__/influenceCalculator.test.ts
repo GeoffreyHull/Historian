@@ -21,7 +21,7 @@ function makeResult(
   return {
     claim,
     event: WEATHER_RAIN,
-    accuracy: "correct",
+    accuracy: 100,
     hasInsult: false,
     baseCredibility: finalCredibility,
     penalty: 0,
@@ -165,7 +165,7 @@ describe("aggregateInfluence (FR19)", () => {
     const result1: CredibilityResult = {
       claim: claim1,
       event: WEATHER_WIND,
-      accuracy: "correct",
+      accuracy: 100,
       hasInsult: false,
       baseCredibility: 90,
       penalty: 0,
@@ -174,7 +174,7 @@ describe("aggregateInfluence (FR19)", () => {
     const result2: CredibilityResult = {
       claim: claim2,
       event: LOCATION_CASTLE,
-      accuracy: "incorrect",
+      accuracy: 0,
       hasInsult: false,
       baseCredibility: 0,
       penalty: 0,

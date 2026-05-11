@@ -32,6 +32,7 @@ function makeEvent(eventType: string): Event {
     truthValue: "true",
     turnNumber: 1,
     observedByPlayer: true,
+  evidenceFragments: [],
   };
 }
 
@@ -223,7 +224,7 @@ describe("End-to-End: World Variables in Game Flow", () => {
     const credResults: CredibilityResult[] = [{
       claim: claims[0],
       event: events[0],
-      accuracy: "correct",
+      accuracy: 100,
       hasInsult: false,
       baseCredibility: 50,
       penalty: 0,

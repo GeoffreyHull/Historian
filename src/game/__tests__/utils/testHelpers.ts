@@ -89,17 +89,17 @@ export interface TestCase {
 export interface AccuracyTestCase extends TestCase {
   claim: Claim;
   event: Event;
-  expectedAccuracy: "correct" | "incorrect"; // Expected accuracy result
+  expectedAccuracy: number; // [0, 100] semantic similarity score
 }
 
 /**
  * PenaltyTestCase: Test case for penalty calculation.
  */
 export interface PenaltyTestCase extends TestCase {
-  baseCredibility: number; // [0, 100]
+  similarity: number; // [0, 100] semantic similarity score
   hasInsult: boolean;
   expectedPenalty: number; // [0, 100]
-  expectedFinal: number; // [0, 100] = baseCredibility - penalty
+  expectedFinal: number; // [0, 100] = similarity - penalty
 }
 
 /**
@@ -123,36 +123,25 @@ export interface InfluenceTestCase extends TestCase {
 
 /**
  * generateAccuracyTestCases: Parametrized test cases for accuracy evaluation.
- * Returns iterator yielding 30–40 cases covering exact match, keyword, partial, no match, edge cases.
+ * Returns iterator yielding cases with numeric similarity expectations (>0 = some overlap, 0 = none).
  */
 export function* generateAccuracyTestCases(): Generator<AccuracyTestCase> {
-  // Test data: (claim text, event type, event truth, expected accuracy)
-  const cases: Array<readonly [string, string, string, "correct" | "incorrect"]> = [
-    // Exact matches
-    ["The sky was clear", "weather", "true", "correct"],
-    ["The sky was clear", "weather", "false", "incorrect"],
-
-    // Keyword matches
-    ["It rained", "weather", "true", "correct"],
-    ["Winds did blow", "weather", "false", "incorrect"],
-
-    // Partial matches
-    ["clear skies", "weather", "true", "correct"],
-    ["castle gate", "location", "true", "correct"],
-
-    // No match
-    ["The sky fell", "weather", "true", "incorrect"],
-    ["Nothing happened", "character", "true", "incorrect"],
-
-    // Edge cases
-    ["", "weather", "true", "incorrect"], // Empty claim
-    ["rain rain rain", "weather", "true", "correct"], // Repetition
+  // Test data: (claim text, event description, minExpected, maxExpected)
+  const cases: Array<readonly [string, string, number, number]> = [
+    // High overlap
+    ["rain fell on the castle", "A light rain fell on the castle grounds", 20, 100],
+    ["the rain fell", "Rain fell gently on the streets", 10, 100],
+    // Partial overlap
+    ["storm and wind", "Strong winds gusted through the forest", 0, 80],
+    // No overlap (unrelated words)
+    ["", "Rain fell gently", 0, 0], // Empty claim
+    ["xyzzy quux frobble", "Rain fell gently", 0, 0], // No shared tokens
   ];
 
   for (let i = 0; i < cases.length; i++) {
-    const [claimText, eventType, truthValue, expected] = cases[i];
+    const [claimText, description, minExp, maxExp] = cases[i];
     yield {
-      description: `Accuracy case ${i + 1}: "${claimText}" vs ${eventType} (${truthValue})`,
+      description: `Accuracy case ${i + 1}: "${claimText}"`,
       claim: {
         claimText,
         eventId: "evt-001" as any,
@@ -161,50 +150,51 @@ export function* generateAccuracyTestCases(): Generator<AccuracyTestCase> {
       },
       event: {
         eventId: "evt-001" as any,
-        eventType,
-        description: `An event of type ${eventType} with truth value ${truthValue}`,
-        truthValue: truthValue as "true" | "false",
+        eventType: "weather",
+        description,
+        truthValue: "true" as const,
         turnNumber: 1,
         observedByPlayer: true,
+        evidenceFragments: [],
       },
-      expectedAccuracy: expected,
+      expectedAccuracy: Math.round((minExp + maxExp) / 2),
     };
   }
 }
 
 /**
  * generatePenaltyTestCases: Parametrized test cases for penalty calculation.
- * Returns iterator yielding 25–30 cases for single error, insults, stacking, clamping.
+ * Penalty is now insult-only; similarity is the base credibility.
  */
 export function* generatePenaltyTestCases(): Generator<PenaltyTestCase> {
   const cases: Array<readonly [number, boolean, number, number, string]> = [
-    // Base case (no insult)
-    [100, false, 0, 100, "perfect claim, no insult"],
-    [80, false, 0, 80, "good claim, no insult"],
-    [50, false, 0, 50, "average claim, no insult"],
-    [20, false, 0, 20, "poor claim, no insult"],
+    // No insult: penalty is always 0
+    [100, false, 0, 100, "high similarity, no insult"],
+    [80, false, 0, 80, "good similarity, no insult"],
+    [50, false, 0, 50, "average similarity, no insult"],
+    [20, false, 0, 20, "low similarity, no insult"],
+    [0, false, 0, 0, "zero similarity, no insult"],
 
-    // Single insult (-5-10%)
-    [100, true, 10, 90, "perfect but insulting"],
-    [80, true, 10, 70, "good but insulting"],
-    [50, true, 10, 40, "average but insulting"],
-    [20, true, 10, 10, "poor and insulting"],
+    // Insult: penalty is always 10
+    [100, true, 10, 90, "high similarity but insulting"],
+    [80, true, 10, 70, "good similarity but insulting"],
+    [50, true, 10, 40, "average similarity but insulting"],
+    [20, true, 10, 10, "low similarity but insulting"],
 
     // Clamping at boundaries
-    [0, false, 0, 0, "already zero"],
-    [0, true, 10, 0, "zero, clamped (penalty would be -10)"],
-    [100, true, 20, 80, "max, reduced by insult"],
+    [5, true, 10, 0, "similarity 5 with insult, final clamped to 0"],
 
     // Edge cases
-    [1, false, 0, 1, "nearly zero"],
-    [99, false, 0, 99, "nearly perfect"],
+    [1, false, 0, 1, "nearly zero, no insult"],
+    [99, false, 0, 99, "nearly perfect, no insult"],
+    [99, true, 10, 89, "nearly perfect but insulting"],
   ];
 
   for (let i = 0; i < cases.length; i++) {
-    const [base, hasInsult, penalty, final, desc] = cases[i];
+    const [sim, hasInsult, penalty, final, desc] = cases[i];
     yield {
       description: `Penalty case ${i + 1}: ${desc}`,
-      baseCredibility: base,
+      similarity: sim,
       hasInsult,
       expectedPenalty: penalty,
       expectedFinal: final,

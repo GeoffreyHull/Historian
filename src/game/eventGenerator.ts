@@ -5,13 +5,11 @@
  * Supports probabilistic shaping via faction beliefs (Epic 4).
  */
 
-import { Event, EventId, TurnNumber, TruthValue, createEventId, Faction } from "./types";
+import { Event, EventId, TurnNumber, TruthValue, EvidenceFragment, ClaimReliability, createEventId, Faction } from "./types";
 import { SeededRNG } from "./rng";
-import { EVENT_TYPE_KEYWORDS } from "./constants";
+import { WITNESS_NAMES, WITNESS_ROLES } from "./constants";
 import { getFactionBeliefInfluence, getConsequenceTexts, getWorldVariableEventWeights } from "./worldStateManager";
 import type { WorldState } from "./types";
-
-const EVENT_TYPES = Object.keys(EVENT_TYPE_KEYWORDS);
 
 const EVENT_DESCRIPTIONS_BY_TYPE: Record<string, string[]> = {
   weather: [
@@ -226,6 +224,8 @@ const EVENT_DESCRIPTIONS_BY_TYPE: Record<string, string[]> = {
   ],
 };
 
+const EVENT_TYPES = Object.keys(EVENT_DESCRIPTIONS_BY_TYPE);
+
 /**
  * EventGenerator: Generate deterministic events with seeded randomness.
  * Supports probabilistic shaping via faction beliefs and consequence references.
@@ -290,6 +290,7 @@ export class EventGenerator {
       const observedByPlayer = this.rng.nextBool(0.7);
 
       const eventId = createEventId(`evt-${turnNumber}-${this.eventCounter++}`);
+      const evidenceFragments = this.generateFragments(description, observedByPlayer);
 
       events.push({
         eventId,
@@ -298,10 +299,27 @@ export class EventGenerator {
         truthValue,
         turnNumber,
         observedByPlayer,
+        evidenceFragments,
       });
     }
 
     return events;
+  }
+
+  /**
+   * Generate named witness/source fragments for an event using seeded RNG.
+   * Always produces exactly 3 fragments; availability scales with observation.
+   */
+  private generateFragments(description: string, observedByPlayer: boolean): EvidenceFragment[] {
+    return Array.from({ length: 3 }, () => {
+      const witnessName = this.rng.pick(WITNESS_NAMES as string[]);
+      const role = this.rng.pick(WITNESS_ROLES as string[]);
+      const reliability = this.rng.pick(["high", "medium", "low"] as ClaimReliability[]);
+      const available = observedByPlayer ? this.rng.nextBool(0.8) : this.rng.nextBool(0.2);
+      const excerpt = description.split(" ").slice(0, 6).join(" ");
+      const account = `${witnessName} reported: "${excerpt}..."`;
+      return { witnessName, role, account, reliability, available };
+    });
   }
 
   /**
