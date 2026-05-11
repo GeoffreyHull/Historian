@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
-import { evaluateClaimsBatch } from "./game/credibilitySystem";
 import { executeTurn } from "./game/turnExecutor";
-import { Claim, Faction, GameState, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
+import { Claim, CredibilityResult, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
+import { CLAIM_REVEAL_DELAY } from "./game/constants";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
 import { buildHistoryBookData } from "./game/historyBookUtils";
 import { buyIntel, canBuyIntel, BUY_INTEL_COST, forceEvent, canForceEvent, FORCE_EVENT_COST } from "./game/influenceActions";
@@ -11,7 +11,6 @@ import { EVENT_TYPE_KEYWORDS } from "./game/constants";
 import { MainMenu } from "./components/MainMenu";
 import { EventCard } from "./components/EventCard";
 import { ClaimInput } from "./components/ClaimInput";
-import { CredibilityResult } from "./components/CredibilityResult";
 import { ClaimLedger } from "./components/ClaimLedger";
 import { FactionTrust } from "./components/FactionTrust";
 import { WorldVariables } from "./components/WorldVariables";
@@ -35,9 +34,7 @@ export const App: React.FC = () => {
   const [screen, setScreen] = useState<Screen>("menu");
   const [gameState, setGameState] = useState<GameState>(createInitialGameState);
   const [currentClaims, setCurrentClaims] = useState<Claim[]>([]);
-  const [credibilityResults, setCredibilityResults] = useState<
-    Array<{ eventId: string; finalCredibility: number }>
-  >([]);
+  const [resolvedClaimResults, setResolvedClaimResults] = useState<readonly CredibilityResult[]>([]);
   const [recap, setRecap] = useState<RunRecapData | null>(null);
   const [nextRunState, setNextRunState] = useState<GameState | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -65,7 +62,7 @@ export const App: React.FC = () => {
     const events = generateEventsForState(rewound);
     setGameState({ ...rewound, events });
     setCurrentClaims([]);
-    setCredibilityResults([]);
+    setResolvedClaimResults([]);
   };
 
   const handleCommitRetcon = () => {
@@ -83,7 +80,7 @@ export const App: React.FC = () => {
     const events = generateEventsForState(restored);
     setGameState({ ...restored, events });
     setCurrentClaims([]);
-    setCredibilityResults([]);
+    setResolvedClaimResults([]);
     setIsInRetcon(false);
     setRetconTargetTurn(null);
     setRetconOriginalSnapshot(null);
@@ -94,7 +91,7 @@ export const App: React.FC = () => {
     const events = generateEventsForState(initial);
     setGameState({ ...initial, events });
     setCurrentClaims([]);
-    setCredibilityResults([]);
+    setResolvedClaimResults([]);
     setRecap(null);
     setNextRunState(null);
     setIsInRetcon(false);
@@ -109,7 +106,7 @@ export const App: React.FC = () => {
     const events = generateEventsForState(saved);
     setGameState({ ...saved, events });
     setCurrentClaims([]);
-    setCredibilityResults([]);
+    setResolvedClaimResults([]);
     setRecap(null);
     setNextRunState(null);
     setScreen("playing");
@@ -134,7 +131,7 @@ export const App: React.FC = () => {
     setScreen(previousScreen);
   };
 
-  const handleClaimSubmit = async (claimText: string) => {
+  const handleClaimSubmit = (claimText: string) => {
     const eventIndex = currentClaims.length % gameState.events.length;
     const selectedEvent = gameState.events[eventIndex];
     const newClaim: Claim = {
@@ -143,14 +140,16 @@ export const App: React.FC = () => {
       isAboutObservedEvent: selectedEvent?.observedByPlayer ?? false,
       turnNumber: gameState.turnNumber,
     };
-
-    const updatedClaims = [...currentClaims, newClaim];
-    setCurrentClaims(updatedClaims);
-
-    const results = await evaluateClaimsBatch(updatedClaims, gameState.events, gameState.currentFaction);
-    setCredibilityResults(
-      results.map((r) => ({ eventId: r.event.eventId, finalCredibility: r.finalCredibility }))
-    );
+    const newPending: PendingClaim = {
+      claim: newClaim,
+      evidenceFragments: selectedEvent?.evidenceFragments ?? [],
+      revealTurn: (gameState.turnNumber + CLAIM_REVEAL_DELAY) as TurnNumber,
+    };
+    setCurrentClaims((prev) => [...prev, newClaim]);
+    setGameState((prev) => ({
+      ...prev,
+      pendingClaims: [...prev.pendingClaims, newPending],
+    }));
   };
 
   const handleBuyIntel = (eventId: string) => {
@@ -167,7 +166,6 @@ export const App: React.FC = () => {
     const result = await executeTurn(gameState, currentClaims);
 
     if (result.updatedState.isGameOver && !result.runEnded) {
-      // FR18 auto-loss: all factions refused mid-run — show game over screen
       setGameState(result.updatedState);
       setScreen("game_over");
     } else if (result.runEnded && result.recap) {
@@ -178,14 +176,14 @@ export const App: React.FC = () => {
       const events = generateEventsForState(result.updatedState);
       setGameState({ ...result.updatedState, events });
       setCurrentClaims([]);
-      setCredibilityResults([]);
+      setResolvedClaimResults(result.resolvedPendingResults);
     }
   };
 
   const handleGameOverRestart = () => {
     setGameState(createInitialGameState());
     setCurrentClaims([]);
-    setCredibilityResults([]);
+    setResolvedClaimResults([]);
     setRecap(null);
     setNextRunState(null);
     setScreen("menu");
@@ -197,7 +195,7 @@ export const App: React.FC = () => {
       setGameState({ ...nextRunState, events });
     }
     setCurrentClaims([]);
-    setCredibilityResults([]);
+    setResolvedClaimResults([]);
     setRecap(null);
     setNextRunState(null);
     setScreen("playing");
@@ -329,22 +327,11 @@ export const App: React.FC = () => {
     );
   }
 
-  const claimLedgerItems = currentClaims.map((claim, index) => {
-    const cred = credibilityResults[index]?.finalCredibility ?? 0;
-    let status: "confirmed" | "disputed" | "unconfirmed";
-    if (cred >= 64) status = "confirmed";
-    else if (cred >= 40) status = "unconfirmed";
-    else status = "disputed";
-    return { claimId: `C${index + 1}`, claim, status };
-  });
-
-  const averageCredibility =
-    credibilityResults.length > 0
-      ? Math.round(
-          credibilityResults.reduce((sum, r) => sum + r.finalCredibility, 0) /
-            credibilityResults.length
-        )
-      : 0;
+  const claimLedgerItems = currentClaims.map((claim, index) => ({
+    claimId: `C${index + 1}`,
+    claim,
+    status: "unconfirmed" as const,
+  }));
 
   return (
     <div className={styles.app}>
@@ -416,20 +403,24 @@ export const App: React.FC = () => {
             />
           </section>
 
-          {credibilityResults.length > 0 && (
+          {resolvedClaimResults.length > 0 && (
             <section className={styles.section}>
-              <CredibilityResult
-                factionScores={[
-                  { name: "historian", emoji: "📖", score: averageCredibility },
-                  { name: "scholar", emoji: "🔬", score: Math.max(0, averageCredibility - 10) },
-                  { name: "witness", emoji: "👁️", score: Math.max(0, averageCredibility - 5) },
-                  { name: "scribe", emoji: "✍️", score: Math.max(0, averageCredibility - 8) },
-                  { name: "diplomat", emoji: "🤝", score: Math.max(0, averageCredibility - 6) },
-                  { name: "rebel", emoji: "⚡", score: Math.max(0, averageCredibility - 12) },
-                  { name: "merchant", emoji: "💰", score: Math.max(0, averageCredibility - 3) },
-                ]}
-                finalCredibility={averageCredibility}
-              />
+              <h2 className={styles.sectionTitle}>Claim Revelations</h2>
+              <div className={styles.resolvedClaims} role="status" aria-live="polite">
+                {resolvedClaimResults.map((r, i) => {
+                  const score = r.finalCredibility;
+                  const level = score >= 64 ? "strong" : score >= 40 ? "moderate" : "weak";
+                  const icon = level === "strong" ? "✓" : level === "moderate" ? "◐" : "✗";
+                  return (
+                    <div key={i} className={`${styles.resolvedClaim} ${styles[`resolvedClaim-${level}`]}`}>
+                      <span className={styles.resolvedIcon}>{icon}</span>
+                      <span className={styles.resolvedText}>
+                        "{r.claim.claimText}" — {score}% credibility
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           )}
 

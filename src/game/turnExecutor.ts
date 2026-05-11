@@ -35,6 +35,7 @@ export interface TurnPhaseResult {
   readonly updatedState: GameState;
   readonly events: Event[];
   readonly credibilityResults: CredibilityResult[];
+  readonly resolvedPendingResults: readonly CredibilityResult[];
   readonly runEnded: boolean;
   readonly recap?: RunRecap;
 }
@@ -42,37 +43,41 @@ export interface TurnPhaseResult {
 /**
  * Resolve due pending claims asynchronously using embedding service.
  * Called at the start of executeTurn before new events are generated.
+ * Returns both the updated state and the resolved results for UI reveal.
  */
 async function resolveDuePendingClaims(
   state: GameState,
   embeddingService: EmbeddingService
-): Promise<GameState> {
+): Promise<{ state: GameState; resolvedResults: CredibilityResult[] }> {
   const dueClaims = state.pendingClaims.filter(
     (p) => p.revealTurn <= state.turnNumber
   );
-  if (dueClaims.length === 0) return state;
+  if (dueClaims.length === 0) return { state, resolvedResults: [] };
 
-  const results: CredibilityResult[] = [];
+  const resolvedResults: CredibilityResult[] = [];
   for (const pc of dueClaims) {
     const event = state.events.find((e) => e.eventId === pc.claim.eventId);
     if (event) {
-      results.push(
+      resolvedResults.push(
         await evaluateClaim(pc.claim, event, state.currentFaction, embeddingService)
       );
     }
   }
 
   const updatedCredMap = { ...state.credibilityMap };
-  for (const r of results) {
+  for (const r of resolvedResults) {
     updatedCredMap[r.event.eventId] = r.finalCredibility;
   }
 
   return {
-    ...state,
-    credibilityMap: updatedCredMap,
-    pendingClaims: state.pendingClaims.filter(
-      (p) => p.revealTurn > state.turnNumber
-    ),
+    state: {
+      ...state,
+      credibilityMap: updatedCredMap,
+      pendingClaims: state.pendingClaims.filter(
+        (p) => p.revealTurn > state.turnNumber
+      ),
+    },
+    resolvedResults,
   };
 }
 
@@ -94,7 +99,8 @@ export async function executeTurn(
   embeddingService: EmbeddingService = defaultEmbeddingService
 ): Promise<TurnPhaseResult> {
   // Phase 0: Resolve due pending claims (async - Phase 2)
-  const resolvedState = await resolveDuePendingClaims(gameState, embeddingService);
+  const { state: resolvedState, resolvedResults: resolvedPendingResults } =
+    await resolveDuePendingClaims(gameState, embeddingService);
   const currentTurn = resolvedState.turnNumber;
 
   // FR46-FR47: Use world's initial seed for deterministic event generation across run resumptions
@@ -208,6 +214,7 @@ export async function executeTurn(
       updatedState: state,
       events,
       credibilityResults,
+      resolvedPendingResults,
       runEnded: true,
       recap,
     };
@@ -237,6 +244,7 @@ export async function executeTurn(
       updatedState: state,
       events,
       credibilityResults,
+      resolvedPendingResults,
       runEnded: false,
     };
   }
