@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
 import { executeTurn } from "./game/turnExecutor";
-import { defaultEventWriterService, TransformersEventWriterService } from "./game/eventWriterService";
+import { defaultEventWriterService, TransformersEventWriterService, ModelLoadProgress } from "./game/eventWriterService";
 import { Claim, CredibilityResult, Event, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
 import { CLAIM_REVEAL_DELAY } from "./game/constants";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
@@ -53,8 +53,16 @@ export const App: React.FC = () => {
   const [retconTargetTurn, setRetconTargetTurn] = useState<TurnNumber | null>(null);
   const [retconOriginalSnapshot, setRetconOriginalSnapshot] = useState<TurnSnapshot | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(false);
+  const [modelProgress, setModelProgress] = useState<ModelLoadProgress>({ status: "idle" });
   // Track the events shown this turn so executeTurn evaluates claims against the same text
   const currentEventsRef = useRef<Event[]>([]);
+
+  // Kick off model download immediately so it's ready before the player starts
+  useEffect(() => {
+    defaultEventWriterService
+      .initialize((p) => setModelProgress(p))
+      .catch(() => setModelProgress({ status: "error" }));
+  }, []);
 
   // Clear save message after 3 seconds
   useEffect(() => {
@@ -242,6 +250,7 @@ export const App: React.FC = () => {
       <MainMenu
         onStartGame={handleStartGame}
         onContinueGame={hasSaved ? handleContinueGame : undefined}
+        modelProgress={modelProgress}
       />
     );
   }
