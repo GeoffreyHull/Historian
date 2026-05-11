@@ -2,19 +2,13 @@ import { Event, Faction } from "./types";
 
 const MODEL_ID = "Xenova/flan-t5-small";
 
-function parseGenerated(
-  text: string,
-  fragmentCount: number
-): { description: string; accounts: string[] } {
-  // Expect numbered output: "1) description 2) account1 3) account2 ..."
-  const parts = text
-    .split(/\d+\)/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const description = parts[0] ?? "";
-  const accounts = parts.slice(1, fragmentCount + 1);
-  while (accounts.length < fragmentCount) accounts.push("");
-  return { description, accounts };
+function buildAccounts(description: string, fragments: Event["evidenceFragments"]): Event["evidenceFragments"] {
+  const words = description.split(" ");
+  return fragments.map((f, i) => {
+    const start = Math.min(i * 3, Math.max(0, words.length - 6));
+    const excerpt = words.slice(start, start + 7).join(" ");
+    return { ...f, account: `${f.witnessName} reported: "${excerpt}..."` };
+  });
 }
 
 export class TransformersEventWriterService {
@@ -49,38 +43,23 @@ export class TransformersEventWriterService {
 
   private async enrichEvent(
     event: Event,
-    turnNumber: number,
+    _turnNumber: number,
     _faction: Faction
   ): Promise<Event> {
     try {
-      const names = event.evidenceFragments.map(
-        (f) => `${f.witnessName} (${f.role})`
-      );
-      const prompt =
-        `Medieval historical event. Type: ${event.eventType}. Turn: ${turnNumber}. ` +
-        `Witnesses: ${names.join(", ")}. ` +
-        `Write: 1) One vivid event description sentence. ` +
-        names
-          .map((n, i) => `${i + 2}) ${n.split(" ")[0]}'s brief account.`)
-          .join(" ");
+      const prompt = `Write one vivid sentence describing a medieval ${event.eventType} event.`;
+      const result = await this.textPipeline(prompt, { max_new_tokens: 60 });
+      const description = (result[0]?.generated_text ?? "").trim();
 
-      const result = await this.textPipeline(prompt, { max_new_tokens: 120 });
-      const generated = result[0]?.generated_text?.trim() ?? "";
-      const { description, accounts } = parseGenerated(
-        generated,
-        event.evidenceFragments.length
-      );
-
-      if (!description) return event;
+      // Reject obviously bad outputs (too short, or just punctuation)
+      if (description.length < 15 || /^[^a-zA-Z]*$/.test(description)) {
+        return event;
+      }
 
       return {
         ...event,
         description,
-        evidenceFragments: event.evidenceFragments.map((f, i) =>
-          accounts[i]
-            ? { ...f, account: `${f.witnessName} reported: "${accounts[i]}"` }
-            : f
-        ),
+        evidenceFragments: buildAccounts(description, event.evidenceFragments),
       };
     } catch {
       return event;
