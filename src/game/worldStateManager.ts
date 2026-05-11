@@ -212,7 +212,7 @@ function recordConsequences(
   // For each accurate, high-credibility claim, record it as a potential consequence trigger
   for (const result of credibilityResults) {
     if (
-      result.accuracy === "correct" &&
+      result.accuracy > 50 &&
       result.finalCredibility > 60 &&
       !result.hasInsult
     ) {
@@ -247,7 +247,7 @@ function updateFactionBeliefs(
 
   // Update beliefs for each faction based on claims
   for (const result of credibilityResults) {
-    if (result.accuracy === "correct" && result.finalCredibility > 50) {
+    if (result.accuracy > 50 && result.finalCredibility > 50) {
       const eventType = getEventTypeFromId(result.event.eventId);
 
       for (const faction of ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"] as const) {

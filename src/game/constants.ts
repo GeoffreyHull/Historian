@@ -69,6 +69,37 @@ export const FACTION_MULTIPLIERS: Record<string, number> = {
 };
 
 /**
+ * CLAIM_REVEAL_DELAY: Turns between claim submission and score revelation.
+ */
+export const CLAIM_REVEAL_DELAY = 2;
+
+/**
+ * WITNESS_NAMES / WITNESS_ROLES: Pool for seeded fragment generation.
+ */
+export const WITNESS_NAMES: readonly string[] = [
+  "Brother Aldric", "Sister Elena", "Merchant Yusuf", "Guard Petra",
+  "Scholar Imre", "Farmer Oswin", "Scribe Catalina", "Innkeeper Rhys",
+  "Elder Maren", "Soldier Dax",
+];
+
+export const WITNESS_ROLES: readonly string[] = [
+  "a market herbalist", "a garrison guard", "a traveling merchant",
+  "a monastery scribe", "a court attendant", "a harbor watchman",
+  "a local farmer", "a temple priest", "a guild apprentice", "an innkeeper",
+];
+
+/**
+ * STOP_WORDS: Common words excluded from semantic similarity tokenization.
+ */
+export const STOP_WORDS: ReadonlySet<string> = new Set([
+  "a", "an", "the", "is", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could",
+  "should", "may", "might", "shall", "to", "of", "in", "on", "at",
+  "by", "for", "with", "about", "as", "and", "or", "but", "not",
+  "it", "this", "that", "they", "them", "their", "from", "into",
+]);
+
+/**
  * World variable names for tracking aggregate world state.
  */
 export const WORLD_VARIABLE_NAMES = ["morale", "infrastructure", "economy"] as const;

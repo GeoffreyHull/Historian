@@ -30,6 +30,7 @@ const TEST_EVENT: Event = {
   truthValue: "true",
   turnNumber: 1,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 describe("[G] World State Manager - Epic 4 Tests", () => {
@@ -57,7 +58,7 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
         {
           claim: claims[0],
           event: events[0],
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -127,7 +128,7 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
         {
           claim: claims[0],
           event: events[0],
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -152,7 +153,7 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
         {
           claim: claims[0],
           event: events[0],
-          accuracy: "incorrect",
+          accuracy: 0,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 30,
@@ -181,7 +182,7 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
         {
           claim: claims[0],
           event: events[0],
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -209,7 +210,7 @@ describe("[G] World State Manager - Epic 4 Tests", () => {
         {
           claim: claims[0],
           event: events[0],
-          accuracy: "incorrect",
+          accuracy: 0,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 20,

@@ -19,6 +19,7 @@ describe("GameManager", () => {
       expect(state.currentFaction).toBe("historian");
       expect(state.events).toEqual([]);
       expect(state.claims).toEqual([]);
+      expect(state.pendingClaims).toEqual([]);
       expect(state.influence).toBe(50);
       expect(state.isGameOver).toBe(false);
     });
@@ -58,7 +59,7 @@ describe("GameManager", () => {
           {
             claim: createClaim({ eventId: event.eventId }),
             event,
-            accuracy: "correct",
+            accuracy: 100,
             hasInsult: false,
             baseCredibility: 100,
             penalty: 0,
@@ -116,7 +117,7 @@ describe("GameManager", () => {
       const result = {
         claim: createClaim({ eventId: event.eventId }),
         event,
-        accuracy: "correct" as const,
+        accuracy: 75,
         hasInsult: false,
         baseCredibility: 75,
         penalty: 0,
@@ -207,6 +208,67 @@ describe("GameManager", () => {
       manager.dispatch({ type: "unknown" as any });
 
       expect(JSON.stringify(manager.getState())).toBe(JSON.stringify(stateBefore));
+    });
+  });
+
+  describe("pending claims and retroactive revelation", () => {
+    it("should create a pending claim when writeClaim is dispatched", () => {
+      const manager = new GameManager();
+      const event = SEEDED_EVENTS[0];
+      manager.dispatch({ type: "updateEvents", events: [event] });
+
+      const claim = createClaim({ eventId: event.eventId });
+      manager.dispatch({ type: "writeClaim", claims: [claim] });
+
+      const state = manager.getState();
+      expect(state.pendingClaims).toHaveLength(1);
+      expect(state.pendingClaims[0].claim).toEqual(claim);
+      expect(state.pendingClaims[0].revealTurn).toBe(state.turnNumber + 2);
+    });
+
+    it("should resolve pending claims and update credibilityMap after reveal delay", () => {
+      const manager = new GameManager();
+      const event = SEEDED_EVENTS[0]; // "A light rain fell on the castle grounds..."
+      manager.dispatch({ type: "updateEvents", events: [event] });
+
+      const claim = createClaim({ eventId: event.eventId, claimText: "rain fell on the castle" });
+      manager.dispatch({ type: "writeClaim", claims: [claim] });
+
+      // Turn 1 → 2: claim has revealTurn 3, not yet resolved
+      manager.dispatch({ type: "nextTurn" });
+      expect(manager.getState().pendingClaims).toHaveLength(1);
+      expect(manager.getState().credibilityMap[event.eventId]).toBeUndefined();
+
+      // Turn 2 → 3: revealTurn reached, claim resolved
+      manager.dispatch({ type: "nextTurn" });
+      expect(manager.getState().pendingClaims).toHaveLength(0);
+      expect(manager.getState().credibilityMap[event.eventId]).toBeTypeOf("number");
+      expect(manager.getState().credibilityMap[event.eventId]).toBeGreaterThan(0);
+    });
+
+    it("should keep claims with future revealTurn in pendingClaims", () => {
+      const manager = new GameManager();
+      const event = SEEDED_EVENTS[0];
+      manager.dispatch({ type: "updateEvents", events: [event] });
+
+      manager.dispatch({ type: "writeClaim", claims: [createClaim({ eventId: event.eventId })] });
+
+      // Only one nextTurn — claim not yet due (needs 2)
+      manager.dispatch({ type: "nextTurn" });
+      expect(manager.getState().pendingClaims).toHaveLength(1);
+    });
+
+    it("should clear pendingClaims entries when writing new claims on next turn", () => {
+      const manager = new GameManager();
+      const event = SEEDED_EVENTS[0];
+      manager.dispatch({ type: "updateEvents", events: [event] });
+
+      manager.dispatch({ type: "writeClaim", claims: [createClaim({ eventId: event.eventId })] });
+      manager.dispatch({ type: "nextTurn" });
+      manager.dispatch({ type: "nextTurn" });
+
+      // After reveal, pendingClaims should be empty
+      expect(manager.getState().pendingClaims).toHaveLength(0);
     });
   });
 

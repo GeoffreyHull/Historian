@@ -13,6 +13,7 @@ export const WEATHER_RAIN: Event = {
   truthValue: "true",
   turnNumber: 1,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 export const WEATHER_WIND: Event = {
@@ -22,6 +23,7 @@ export const WEATHER_WIND: Event = {
   truthValue: "false", // Actually, it was calm
   turnNumber: 2,
   observedByPlayer: false,
+  evidenceFragments: [],
 };
 
 export const WEATHER_CLEAR: Event = {
@@ -31,6 +33,7 @@ export const WEATHER_CLEAR: Event = {
   truthValue: "true",
   turnNumber: 3,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 // Location events (3)
@@ -41,6 +44,7 @@ export const LOCATION_CASTLE: Event = {
   truthValue: "true",
   turnNumber: 4,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 export const LOCATION_FOREST: Event = {
@@ -50,6 +54,7 @@ export const LOCATION_FOREST: Event = {
   truthValue: "false", // Path was clear
   turnNumber: 5,
   observedByPlayer: false,
+  evidenceFragments: [],
 };
 
 export const LOCATION_VILLAGE: Event = {
@@ -59,6 +64,7 @@ export const LOCATION_VILLAGE: Event = {
   truthValue: "true",
   turnNumber: 6,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 // Character events (3)
@@ -69,6 +75,7 @@ export const CHARACTER_APPEARANCE: Event = {
   truthValue: "true",
   turnNumber: 7,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 export const CHARACTER_ACTION: Event = {
@@ -78,6 +85,7 @@ export const CHARACTER_ACTION: Event = {
   truthValue: "true",
   turnNumber: 8,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 export const CHARACTER_CONVERSATION: Event = {
@@ -87,6 +95,7 @@ export const CHARACTER_CONVERSATION: Event = {
   truthValue: "false", // Only 10 minutes
   turnNumber: 9,
   observedByPlayer: false,
+  evidenceFragments: [],
 };
 
 // Edge case events (3)
@@ -97,6 +106,7 @@ export const EDGE_EMPTY_DESCRIPTION: Event = {
   truthValue: "true",
   turnNumber: 10,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 export const EDGE_MAX_LENGTH: Event = {
@@ -108,6 +118,7 @@ export const EDGE_MAX_LENGTH: Event = {
   truthValue: "true",
   turnNumber: 11,
   observedByPlayer: false,
+  evidenceFragments: [],
 };
 
 export const EDGE_SPECIAL_CHARS: Event = {
@@ -117,6 +128,7 @@ export const EDGE_SPECIAL_CHARS: Event = {
   truthValue: "true",
   turnNumber: 12,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 // Conflict events (3)
@@ -127,6 +139,7 @@ export const CONFLICT_CONTRADICTORY_1: Event = {
   truthValue: "true",
   turnNumber: 13,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 export const CONFLICT_CONTRADICTORY_2: Event = {
@@ -136,6 +149,7 @@ export const CONFLICT_CONTRADICTORY_2: Event = {
   truthValue: "false", // Same event, opposite truth
   turnNumber: 14,
   observedByPlayer: false,
+  evidenceFragments: [],
 };
 
 export const CONFLICT_AMBIGUOUS: Event = {
@@ -145,6 +159,7 @@ export const CONFLICT_AMBIGUOUS: Event = {
   truthValue: "true", // Lost in tower but later recovered elsewhere?
   turnNumber: 15,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 /**

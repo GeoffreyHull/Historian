@@ -150,6 +150,7 @@ describe("[G] Session Persistence - Epic 6 Tests", () => {
             truthValue: "true" as any,
             turnNumber: 1,
             observedByPlayer: true,
+            evidenceFragments: [],
           },
         ],
       };
@@ -274,6 +275,7 @@ describe("[G] Session Persistence - Epic 6 Tests", () => {
             truthValue: "true" as any,
             turnNumber: 1,
             observedByPlayer: true,
+            evidenceFragments: [],
           },
         ],
       };

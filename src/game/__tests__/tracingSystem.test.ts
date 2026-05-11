@@ -25,6 +25,7 @@ const TEST_EVENT = {
   truthValue: "true" as const,
   turnNumber: 1,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 describe("[G] Tracing System - Epic 7 Tests", () => {
@@ -273,7 +274,7 @@ describe("[G] Tracing System - Epic 7 Tests", () => {
       const credResult = {
         claim,
         event: TEST_EVENT,
-        accuracy: "correct" as const,
+        accuracy: 100,
         hasInsult: false,
         baseCredibility: 50,
         penalty: 0,
@@ -342,7 +343,7 @@ describe("[G] Tracing System - Epic 7 Tests", () => {
       const credResult = {
         claim,
         event: TEST_EVENT,
-        accuracy: "correct" as const,
+        accuracy: 100,
         hasInsult: false,
         baseCredibility: 50,
         penalty: 0,

@@ -6,40 +6,50 @@
  */
 
 import { Claim, Event, CredibilityResult, Faction } from "./types";
-import {
-  EVENT_TYPE_KEYWORDS,
-  INSULTING_PHRASES,
-  FACTION_MULTIPLIERS,
-} from "./constants";
+import { INSULTING_PHRASES, FACTION_MULTIPLIERS, STOP_WORDS } from "./constants";
 
 /**
- * Evaluate claim accuracy by comparing claim text keywords to event truth.
- * 60% match threshold: if ≥60% of claim keywords match event type, accuracy depends on event truth.
+ * Tokenize text: lowercase, strip punctuation, remove stop words and single chars.
+ * Used by computeSemanticSimilarity for both claim and event description.
  */
-export function evaluateClaimAccuracy(claim: Claim, event: Event): "correct" | "incorrect" {
-  const keywords = EVENT_TYPE_KEYWORDS[event.eventType] || [];
-  if (keywords.length === 0) {
-    return "incorrect"; // No keywords for this event type
-  }
+function tokenize(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 1 && !STOP_WORDS.has(w))
+  );
+}
 
-  // Count how many event keywords appear in claim text (case-insensitive)
-  const claimLower = claim.claimText.toLowerCase();
-  const matchedKeywords = keywords.filter((kw) => claimLower.includes(kw.toLowerCase()));
-  const matchRatio = matchedKeywords.length / keywords.length;
+/**
+ * Compute semantic similarity between claim text and event description.
+ * Phase 1: Jaccard similarity on stop-word-filtered token sets. Range [0, 100].
+ * Phase 2 (follow-up): replace body with Transformers.js cosine similarity.
+ */
+export function computeSemanticSimilarity(
+  claimText: string,
+  eventDescription: string
+): number {
+  if (!claimText || !eventDescription) return 0;
+  const claimTokens = tokenize(claimText);
+  const eventTokens = tokenize(eventDescription);
+  if (claimTokens.size === 0 || eventTokens.size === 0) return 0;
+  const intersection = [...claimTokens].filter((t) => eventTokens.has(t)).length;
+  const union = new Set([...claimTokens, ...eventTokens]).size;
+  return Math.round((intersection / union) * 100);
+}
 
-  // If ≥60% keywords match, treat claim as affirming the event
-  const claimAffirmsEvent = matchRatio >= 0.6;
-
-  // Compare to event truth value
-  const eventIsTrue = event.truthValue === "true";
-  const isAccurate = claimAffirmsEvent === eventIsTrue;
-
-  return isAccurate ? "correct" : "incorrect";
+/**
+ * Evaluate claim accuracy as semantic similarity to event description.
+ * Returns [0, 100] — higher means the claim better captures the event's meaning.
+ */
+export function evaluateClaimAccuracy(claim: Claim, event: Event): number {
+  return computeSemanticSimilarity(claim.claimText, event.description);
 }
 
 /**
  * Detect if claim contains faction-specific insults.
- * Checks if claim text contains any phrase from faction's insult list.
  */
 export function detectInsult(claim: Claim, faction: Faction): boolean {
   const insults = INSULTING_PHRASES[faction] || [];
@@ -48,30 +58,20 @@ export function detectInsult(claim: Claim, faction: Faction): boolean {
 }
 
 /**
- * Calculate credibility penalty based on accuracy and insults.
- * Base penalty: 0% if correct, 20% if incorrect.
- * Insult penalty: additional 5-10% per insult.
- * Clamped to [0, 100].
+ * Calculate credibility penalty.
+ * Only insult incurs a penalty — similarity score already encodes accuracy.
  */
-export function calculatePenalty(
-  accuracy: "correct" | "incorrect",
-  hasInsult: boolean
-): number {
-  let penalty = accuracy === "correct" ? 0 : 20;
-  if (hasInsult) {
-    penalty += 10;
-  }
-  return Math.min(penalty, 100); // Clamp to [0, 100]
+export function calculatePenalty(similarity: number, hasInsult: boolean): number {
+  void similarity; // similarity informs baseCredibility, not the penalty formula
+  return hasInsult ? 10 : 0;
 }
 
 /**
- * Calculate final credibility score.
- * Starts at 50 (neutral), adjusts based on penalty.
+ * Calculate final credibility score from similarity and penalty.
+ * Clamped to [0, 100].
  */
-export function calculateCredibility(penalty: number): number {
-  const baseCredibility = 50; // Neutral starting point
-  const finalCredibility = Math.max(0, baseCredibility - penalty); // Clamp to [0, 100]
-  return Math.min(finalCredibility, 100);
+export function calculateCredibility(similarity: number, penalty: number): number {
+  return Math.min(100, Math.max(0, similarity - penalty));
 }
 
 /**
@@ -82,14 +82,14 @@ export function evaluateClaim(claim: Claim, event: Event, faction: Faction): Cre
   const accuracy = evaluateClaimAccuracy(claim, event);
   const hasInsult = detectInsult(claim, faction);
   const penalty = calculatePenalty(accuracy, hasInsult);
-  const finalCredibility = calculateCredibility(penalty);
+  const finalCredibility = calculateCredibility(accuracy, penalty);
 
   return {
     claim,
     event,
     accuracy,
     hasInsult,
-    baseCredibility: 50,
+    baseCredibility: accuracy,
     penalty,
     finalCredibility,
   };
@@ -97,7 +97,7 @@ export function evaluateClaim(claim: Claim, event: Event, faction: Faction): Cre
 
 /**
  * Calculate influence from credibility result.
- * Influence = credibility × faction.multiplier
+ * Influence = credibility × faction multiplier.
  */
 export function calculateInfluence(
   credibilityResult: CredibilityResult,
@@ -120,18 +120,17 @@ export function evaluateClaimsBatch(
     .map((claim) => {
       const event = events.find((e) => e.eventId === claim.eventId);
       if (!event) {
-        // Event not found: treat as incorrect
         return {
           claim,
-          event: null as any, // This shouldn't happen with valid data
-          accuracy: "incorrect" as const,
+          event: null as any,
+          accuracy: 0,
           hasInsult: false,
-          baseCredibility: 50,
-          penalty: 20,
-          finalCredibility: 30,
+          baseCredibility: 0,
+          penalty: 0,
+          finalCredibility: 0,
         };
       }
       return evaluateClaim(claim, event, faction);
     })
-    .filter((result) => result.event); // Filter out missing events
+    .filter((result) => result.event);
 }

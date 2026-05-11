@@ -31,31 +31,31 @@ import { createClaim, createAccurateClaim, createInsultingClaim } from "./fixtur
 // ============================================================================
 
 describe("Accuracy Evaluation (AC1)", () => {
-  it("should evaluate accuracy using keywords", () => {
-    const event = SEEDED_EVENTS[0]; // weather event
-    const claimWithKeyword = createClaim({ claimText: "rain fell heavily" });
-    const claimNoKeyword = createClaim({ claimText: "something happened" });
+  it("should evaluate accuracy as a numeric similarity score [0, 100]", () => {
+    const event = SEEDED_EVENTS[0]; // "A light rain fell on the castle grounds throughout the morning."
+    const claimRelated = createClaim({ claimText: "rain fell on the castle" });
+    const claimUnrelated = createClaim({ claimText: "the army marched at dawn" });
 
-    const result1 = evaluateClaimAccuracy(claimWithKeyword, event);
-    const result2 = evaluateClaimAccuracy(claimNoKeyword, event);
+    const scoreRelated = evaluateClaimAccuracy(claimRelated, event);
+    const scoreUnrelated = evaluateClaimAccuracy(claimUnrelated, event);
 
-    expect(result1).toBeDefined();
-    expect(result2).toBeDefined();
-    expect(["correct", "incorrect"]).toContain(result1);
-    expect(["correct", "incorrect"]).toContain(result2);
+    expect(typeof scoreRelated).toBe("number");
+    expect(scoreRelated).toBeGreaterThanOrEqual(0);
+    expect(scoreRelated).toBeLessThanOrEqual(100);
+    expect(scoreRelated).toBeGreaterThan(scoreUnrelated); // related claim scores higher
   });
 
-  it("should return incorrect for empty claims", () => {
+  it("should return 0 for empty claims", () => {
     const event = SEEDED_EVENTS[0];
     const claim = createClaim({ claimText: "" });
     const result = evaluateClaimAccuracy(claim, event);
-    expect(result).toBe("incorrect");
+    expect(result).toBe(0);
   });
 
   it("should be case-insensitive", () => {
     const event = SEEDED_EVENTS[0];
-    const claimLower = createClaim({ claimText: "rain" });
-    const claimUpper = createClaim({ claimText: "RAIN" });
+    const claimLower = createClaim({ claimText: "rain fell castle morning" });
+    const claimUpper = createClaim({ claimText: "RAIN FELL CASTLE MORNING" });
     const resultLower = evaluateClaimAccuracy(claimLower, event);
     const resultUpper = evaluateClaimAccuracy(claimUpper, event);
     expect(resultLower).toBe(resultUpper);
@@ -107,35 +107,32 @@ describe("Penalty Calculation (AC3)", () => {
     expect(testCases.length).toBeGreaterThanOrEqual(10);
 
     for (const tc of testCases) {
-      const penalty = calculatePenalty(
-        tc.baseCredibility === 100 ? "correct" : "incorrect",
-        tc.hasInsult
-      );
-      // Note: our test helper format is different; verify calculation works
+      const penalty = calculatePenalty(tc.similarity, tc.hasInsult);
+      expect(penalty).toBe(tc.expectedPenalty);
       expect(penalty).toBeGreaterThanOrEqual(0);
       expect(penalty).toBeLessThanOrEqual(100);
     }
   });
 
-  it("should return 0 for correct claims without insult", () => {
-    const penalty = calculatePenalty("correct", false);
+  it("should return 0 when there is no insult", () => {
+    const penalty = calculatePenalty(80, false);
     expect(penalty).toBe(0);
   });
 
-  it("should return 20 for incorrect claims", () => {
-    const penalty = calculatePenalty("incorrect", false);
-    expect(penalty).toBe(20);
+  it("should return 10 when there is an insult", () => {
+    const penalty = calculatePenalty(80, true);
+    expect(penalty).toBe(10);
   });
 
-  it("should add 10 for insults", () => {
-    const penaltyNoInsult = calculatePenalty("incorrect", false);
-    const penaltyWithInsult = calculatePenalty("incorrect", true);
-    expect(penaltyWithInsult - penaltyNoInsult).toBe(10);
+  it("should return 10 for insult regardless of similarity", () => {
+    expect(calculatePenalty(0, true)).toBe(10);
+    expect(calculatePenalty(50, true)).toBe(10);
+    expect(calculatePenalty(100, true)).toBe(10);
   });
 
-  it("should clamp penalty at 100", () => {
-    const penalty = calculatePenalty("incorrect", true);
-    expect(penalty).toBeLessThanOrEqual(100);
+  it("should clamp final credibility to 0 when penalty exceeds similarity", () => {
+    const finalCred = calculateCredibility(5, 10);
+    expect(finalCred).toBe(0);
   });
 });
 
@@ -152,7 +149,7 @@ describe("Influence Calculation (AC4)", () => {
       const credibilityResult = {
         claim: createClaim(),
         event: SEEDED_EVENTS[0],
-        accuracy: "correct" as const,
+        accuracy: 100,
         hasInsult: false,
         baseCredibility: tc.credibilityScore,
         penalty: 0,
@@ -167,7 +164,7 @@ describe("Influence Calculation (AC4)", () => {
     const credibilityResult = {
       claim: createClaim(),
       event: SEEDED_EVENTS[0],
-      accuracy: "correct" as const,
+      accuracy: 100,
       hasInsult: false,
       baseCredibility: 100,
       penalty: 0,

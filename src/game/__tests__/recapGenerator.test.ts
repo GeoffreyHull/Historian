@@ -22,6 +22,7 @@ const TEST_EVENT: Event = {
   truthValue: "true",
   turnNumber: 1,
   observedByPlayer: true,
+  evidenceFragments: [],
 };
 
 describe("[G] Recap Generator - Epic 5 Tests", () => {
@@ -34,7 +35,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -66,7 +67,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -75,7 +76,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[1],
           event: TEST_EVENT,
-          accuracy: "incorrect",
+          accuracy: 0,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 40,
@@ -104,7 +105,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
       const credResults = claims.map((claim) => ({
         claim,
         event: TEST_EVENT,
-        accuracy: "correct" as const,
+        accuracy: 100,
         hasInsult: false,
         baseCredibility: 50,
         penalty: 0,
@@ -133,7 +134,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -162,7 +163,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -193,7 +194,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -235,7 +236,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -401,7 +402,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -431,7 +432,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
@@ -468,7 +469,7 @@ describe("[G] Recap Generator - Epic 5 Tests", () => {
         {
           claim: claims[0],
           event: TEST_EVENT,
-          accuracy: "correct",
+          accuracy: 100,
           hasInsult: false,
           baseCredibility: 50,
           penalty: 0,
