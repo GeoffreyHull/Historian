@@ -312,8 +312,14 @@ export class EventGenerator {
    */
   private generateFragments(description: string, observedByPlayer: boolean): EvidenceFragment[] {
     const words = description.split(" ");
+    // Pick 3 unique witness names via partial Fisher-Yates shuffle
+    const namePool = [...(WITNESS_NAMES as string[])];
+    for (let i = 0; i < 3; i++) {
+      const j = this.rng.nextInt(i, namePool.length);
+      [namePool[i], namePool[j]] = [namePool[j], namePool[i]];
+    }
     return Array.from({ length: 3 }, (_, i) => {
-      const witnessName = this.rng.pick(WITNESS_NAMES as string[]);
+      const witnessName = namePool[i];
       const role = this.rng.pick(WITNESS_ROLES as string[]);
       const reliability = this.rng.pick(["high", "medium", "low"] as ClaimReliability[]);
       const available = observedByPlayer ? this.rng.nextBool(0.8) : this.rng.nextBool(0.2);
