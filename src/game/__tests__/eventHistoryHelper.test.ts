@@ -165,27 +165,27 @@ describe("eventHistoryHelper", () => {
 
   describe("formatWorldStateForPrompt", () => {
     it("should describe morale levels", () => {
-      const state1 = mockWorldState();
-      state1.worldVariables.morale = 90;
+      const base1 = mockWorldState();
+      const state1 = { ...base1, worldVariables: { ...base1.worldVariables, morale: 90 } };
       const summary1 = formatWorldStateForPrompt(state1);
       expect(summary1).toContain("very high");
 
-      const state2 = mockWorldState();
-      state2.worldVariables.morale = 20;
+      const base2 = mockWorldState();
+      const state2 = { ...base2, worldVariables: { ...base2.worldVariables, morale: 20 } };
       const summary2 = formatWorldStateForPrompt(state2);
       expect(summary2).toContain("very low");
     });
 
     it("should describe infrastructure", () => {
-      const state = mockWorldState();
-      state.worldVariables.infrastructure = 80;
+      const base = mockWorldState();
+      const state = { ...base, worldVariables: { ...base.worldVariables, infrastructure: 80 } };
       const summary = formatWorldStateForPrompt(state);
       expect(summary).toContain("well-maintained");
     });
 
     it("should describe economy", () => {
-      const state = mockWorldState();
-      state.worldVariables.economy = 30;
+      const base = mockWorldState();
+      const state = { ...base, worldVariables: { ...base.worldVariables, economy: 30 } };
       const summary = formatWorldStateForPrompt(state);
       expect(summary).toContain("struggling");
     });
