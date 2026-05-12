@@ -36,7 +36,15 @@ async function generateEventsForState(
   writerService: TransformersEventWriterService
 ): Promise<Event[]> {
   const base = generateBaseEventsForState(state);
-  return writerService.enrichEvents(base, state.turnNumber, state.currentFaction);
+  const recentEvents = state.events.filter((e) => e.turnNumber >= Math.max(1, state.turnNumber - 3));
+  return writerService.enrichEvents(
+    base,
+    state.turnNumber,
+    state.currentFaction,
+    state.worldState,
+    recentEvents,
+    state.worldState.consequences
+  );
 }
 
 export const App: React.FC = () => {

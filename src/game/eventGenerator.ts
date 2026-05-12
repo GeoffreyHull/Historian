@@ -1,15 +1,17 @@
 /**
  * EventGenerator: Deterministic event generation with seeded randomness.
  * Constraint 3: Uses SeededRNG for all randomness.
- * Constraint 9: Same seed → identical events (determinism).
+ * Constraint 9: Same seed → identical events (determinism of fragments).
  * Supports probabilistic shaping via faction beliefs (Epic 4).
+ * Supports LLM-generated event types via suggestEventTypes().
  */
 
-import { Event, EventId, TurnNumber, TruthValue, EvidenceFragment, ClaimReliability, createEventId, Faction } from "./types";
+import { Event, EventId, TurnNumber, TruthValue, EvidenceFragment, ClaimReliability, createEventId, Faction, CascadingConsequence } from "./types";
 import { SeededRNG } from "./rng";
 import { WITNESS_NAMES, WITNESS_ROLES } from "./constants";
 import { getFactionBeliefInfluence, getConsequenceTexts, getWorldVariableEventWeights } from "./worldStateManager";
 import type { WorldState } from "./types";
+import { buildEventTypeSuggestionContext } from "./eventHistoryHelper";
 
 const EVENT_DESCRIPTIONS_BY_TYPE: Record<string, string[]> = {
   weather: [
@@ -246,6 +248,51 @@ export class EventGenerator {
   setWorldState(worldState: WorldState, currentFaction: Faction): void {
     this.worldState = worldState;
     this.currentFaction = currentFaction;
+  }
+
+  /**
+   * Suggest event types based on world context.
+   * Returns suggested types as strings (LLM-generated).
+   * Falls back to hardcoded types if LLM fails or no world state.
+   */
+  async suggestEventTypes(
+    turnNumber: TurnNumber,
+    recentEvents: readonly Event[] = [],
+    consequences: readonly CascadingConsequence[] = []
+  ): Promise<string[]> {
+    // Without world state, fall back to hardcoded types
+    if (!this.worldState) {
+      return EVENT_TYPES;
+    }
+
+    try {
+      const context = buildEventTypeSuggestionContext(
+        this.worldState,
+        recentEvents,
+        turnNumber,
+        consequences,
+        this.worldState.history
+      );
+
+      // For now, return hardcoded types with fallback to LLM in future
+      // TODO: Replace with actual FLAN-T5 LLM call once eventWriterService integrates
+      return EVENT_TYPES;
+    } catch (e) {
+      // Fallback to hardcoded types on any error
+      console.warn("[EventGenerator] suggestEventTypes failed, using hardcoded types:", e);
+      return EVENT_TYPES;
+    }
+  }
+
+  /**
+   * Select one event type from suggested types using seeded RNG.
+   * Ensures deterministic selection while allowing LLM creativity in suggestions.
+   */
+  selectEventType(suggestedTypes: string[]): string {
+    if (suggestedTypes.length === 0) {
+      return this.rng.pick(EVENT_TYPES);
+    }
+    return this.rng.pick(suggestedTypes);
   }
 
   /**

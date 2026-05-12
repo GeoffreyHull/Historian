@@ -40,12 +40,13 @@ export interface PendingClaim {
  */
 export interface Event {
   readonly eventId: EventId;
-  readonly eventType: string; // e.g., "weather", "location", "character"
+  readonly eventType: string; // e.g., "weather", "location", "character", or LLM-generated type
   readonly description: string; // e.g., "A light rain fell on the castle"
   readonly truthValue: TruthValue; // The ground truth: "true" or "false"
   readonly turnNumber: TurnNumber; // Turn when event occurred
   readonly observedByPlayer: boolean; // Whether player witnessed this event
   readonly evidenceFragments: readonly EvidenceFragment[]; // Named witness accounts
+  readonly eventTypeSource?: "hardcoded" | "llm-generated"; // Track origin for debugging
 }
 
 /**

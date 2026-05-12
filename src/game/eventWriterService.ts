@@ -1,4 +1,8 @@
-import { Event, Faction } from "./types";
+import { Event, Faction, WorldState, CascadingConsequence } from "./types";
+import {
+  buildEventDescriptionContext,
+  buildWitnessContext,
+} from "./eventHistoryHelper";
 
 const MODEL_ID = "Xenova/flan-t5-base";
 
@@ -59,7 +63,14 @@ export class TransformersEventWriterService {
     await this.loadPromise;
   }
 
-  async enrichEvents(events: Event[], turnNumber: number, faction: Faction): Promise<Event[]> {
+  async enrichEvents(
+    events: Event[],
+    turnNumber: number,
+    faction: Faction,
+    worldState?: WorldState,
+    recentEvents?: readonly Event[],
+    consequences?: readonly CascadingConsequence[]
+  ): Promise<Event[]> {
     try {
       await this.ensureInitialized();
     } catch {
@@ -68,43 +79,97 @@ export class TransformersEventWriterService {
 
     const enriched: Event[] = [];
     for (const event of events) {
-      enriched.push(await this.enrichEvent(event, turnNumber, faction));
+      enriched.push(
+        await this.enrichEvent(
+          event,
+          turnNumber,
+          faction,
+          worldState,
+          recentEvents,
+          consequences
+        )
+      );
     }
     return enriched;
   }
 
-  private async enrichEvent(event: Event, _turnNumber: number, _faction: Faction): Promise<Event> {
+  private async enrichEvent(
+    event: Event,
+    turnNumber: number,
+    _faction: Faction,
+    worldState?: WorldState,
+    recentEvents?: readonly Event[],
+    consequences: readonly CascadingConsequence[] = []
+  ): Promise<Event> {
     try {
-      console.log(`[EventGenerator] Enriching event: type=${event.eventType}, id=${event.eventId}`);
+      console.log(
+        `[EventGenerator] Enriching event: type=${event.eventType}, id=${event.eventId}`
+      );
 
-      const descPrompt = `Write one vivid sentence describing a medieval ${event.eventType} event.`;
-      const descResult = await this.textPipeline(descPrompt, { max_new_tokens: 60 });
+      // Build context for description generation
+      const context = worldState && recentEvents
+        ? buildEventDescriptionContext(
+            worldState,
+            recentEvents,
+            turnNumber,
+            consequences
+          )
+        : "";
+
+      const descPrompt = context
+        ? `${context}\n\nCurrent event type: ${event.eventType}\n\nWrite one vivid, poetic sentence describing a ${event.eventType} event happening now. Reference or build on recent events if relevant to create narrative continuity. The event should feel like it's part of an ongoing story.`
+        : `Write one vivid sentence describing a medieval ${event.eventType} event.`;
+
+      const descResult = await this.textPipeline(descPrompt, {
+        max_new_tokens: 60,
+      });
       const description = (descResult[0]?.generated_text ?? "").trim();
 
       if (!this.isValidOutput(description)) {
-        console.log(`[EventGenerator] Description validation failed for ${event.eventType}. Raw output: "${description}"`);
+        console.log(
+          `[EventGenerator] Description validation failed for ${event.eventType}. Raw output: "${description}"`
+        );
         return event;
       }
 
       console.log(`[EventGenerator] Generated description: "${description}"`);
 
+      const witnessContext = worldState && recentEvents
+        ? buildWitnessContext(
+            worldState,
+            recentEvents,
+            turnNumber,
+            consequences
+          )
+        : "";
+
       const enrichedFragments = await Promise.all(
         event.evidenceFragments.map((f) =>
-          this.generateWitnessAccount(f.witnessName, f.role, event.eventType).then((account) => ({
+          this.generateWitnessAccount(
+            f.witnessName,
+            f.role,
+            event.eventType,
+            witnessContext
+          ).then((account) => ({
             ...f,
             account,
           }))
         )
       );
 
-      console.log(`[EventGenerator] Generated ${enrichedFragments.length} witness accounts for ${event.eventType}`);
+      console.log(
+        `[EventGenerator] Generated ${enrichedFragments.length} witness accounts for ${event.eventType}`
+      );
       enrichedFragments.forEach((f) => {
         console.log(`  - ${f.witnessName} (${f.role}): "${f.account}"`);
       });
 
       return { ...event, description, evidenceFragments: enrichedFragments };
     } catch (err) {
-      console.error(`[EventGenerator] Error enriching event ${event.eventType}:`, err);
+      console.error(
+        `[EventGenerator] Error enriching event ${event.eventType}:`,
+        err
+      );
       return event;
     }
   }
@@ -112,13 +177,18 @@ export class TransformersEventWriterService {
   private async generateWitnessAccount(
     witnessName: string,
     role: string,
-    eventType: string
+    eventType: string,
+    context: string = ""
   ): Promise<string> {
     try {
-      const prompt = `Write one sentence as ${role} describing something unusual you personally observed, hinting at a medieval ${eventType} event without naming the event directly.`;
+      const prompt = context
+        ? `${context}\n\nA ${eventType} event has just occurred.\n\nYou are ${role}. Write one sentence describing something unusual you personally observed, hinting at this ${eventType} event. Your account should be told from your perspective, reflect the mood of the times, and reference the broader context subtly if relevant. Be mysterious or tangential (don't name the event directly).`
+        : `Write one sentence as ${role} describing something unusual you personally observed, hinting at a medieval ${eventType} event without naming the event directly.`;
+
       const result = await this.textPipeline(prompt, { max_new_tokens: 50 });
       const text = (result[0]?.generated_text ?? "").trim();
-      if (this.isValidOutput(text, 10)) return `${witnessName} reported: "${text}"`;
+      if (this.isValidOutput(text, 10))
+        return `${witnessName} reported: "${text}"`;
     } catch { /* fall through */ }
     return `${witnessName} reported witnessing something unusual.`;
   }
