@@ -9,15 +9,6 @@ export interface ModelLoadProgress {
   progress?: number; // 0–100 during download
 }
 
-function buildAccounts(description: string, fragments: Event["evidenceFragments"]): Event["evidenceFragments"] {
-  const words = description.split(" ");
-  return fragments.map((f, i) => {
-    const start = Math.min(i * 3, Math.max(0, words.length - 6));
-    const excerpt = words.slice(start, start + 7).join(" ");
-    return { ...f, account: `${f.witnessName} reported: "${excerpt}..."` };
-  });
-}
-
 export class TransformersEventWriterService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private textPipeline: any = null;
@@ -84,20 +75,39 @@ export class TransformersEventWriterService {
 
   private async enrichEvent(event: Event, _turnNumber: number, _faction: Faction): Promise<Event> {
     try {
-      const prompt = `Write one vivid sentence describing a medieval ${event.eventType} event.`;
-      const result = await this.textPipeline(prompt, { max_new_tokens: 60 });
-      const description = (result[0]?.generated_text ?? "").trim();
+      const descPrompt = `Write one vivid sentence describing a medieval ${event.eventType} event.`;
+      const descResult = await this.textPipeline(descPrompt, { max_new_tokens: 60 });
+      const description = (descResult[0]?.generated_text ?? "").trim();
 
       if (description.length < 15 || /^[^a-zA-Z]*$/.test(description)) return event;
 
-      return {
-        ...event,
-        description,
-        evidenceFragments: buildAccounts(description, event.evidenceFragments),
-      };
+      const enrichedFragments = await Promise.all(
+        event.evidenceFragments.map((f) =>
+          this.generateWitnessAccount(f.witnessName, f.role, event.eventType).then((account) => ({
+            ...f,
+            account,
+          }))
+        )
+      );
+
+      return { ...event, description, evidenceFragments: enrichedFragments };
     } catch {
       return event;
     }
+  }
+
+  private async generateWitnessAccount(
+    witnessName: string,
+    role: string,
+    eventType: string
+  ): Promise<string> {
+    try {
+      const prompt = `Write one sentence as ${role} describing something unusual you personally observed, hinting at a medieval ${eventType} event without naming the event directly.`;
+      const result = await this.textPipeline(prompt, { max_new_tokens: 50 });
+      const text = (result[0]?.generated_text ?? "").trim();
+      if (text.length >= 10) return `${witnessName} reported: "${text}"`;
+    } catch { /* fall through */ }
+    return `${witnessName} reported witnessing something unusual.`;
   }
 }
 
