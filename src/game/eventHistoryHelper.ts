@@ -126,6 +126,17 @@ export function buildEventTypeSuggestionContext(
 }
 
 /**
+ * Truncates a context string to a maximum character count,
+ * cutting at the last complete word within the limit.
+ */
+export function truncateContext(context: string, maxChars: number = 400): string {
+  if (context.length <= maxChars) return context;
+  const truncated = context.slice(0, maxChars);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + "...";
+}
+
+/**
  * Builds full context string for event description generation.
  */
 export function buildEventDescriptionContext(
@@ -138,7 +149,7 @@ export function buildEventDescriptionContext(
   const recentEventsStr = getRecentEventsSummary(recentEvents, currentTurnNumber, 3);
   const consequencesStr = getConsequencesSummary(consequences);
 
-  return `World state: ${worldStateStr}\n\nRecent history: ${recentEventsStr}\n\nContext: ${consequencesStr}`;
+  return truncateContext(`World state: ${worldStateStr}\n\nRecent history: ${recentEventsStr}\n\nContext: ${consequencesStr}`);
 }
 
 /**
