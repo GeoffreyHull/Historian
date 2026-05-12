@@ -141,6 +141,36 @@ Line endings are configured via `.gitattributes` (LF for source files, CRLF for 
 
 ---
 
+## LLM-Generated Event Content
+
+Both **event descriptions** and **witness accounts** are generated at runtime by `TransformersEventWriterService` (`src/game/eventWriterService.ts`) using the **Xenova/flan-t5-small** model via `@xenova/transformers`.
+
+### Prompts
+
+- **Event description** (one per event):
+  ```
+  Write one vivid sentence describing a medieval {eventType} event.
+  ```
+- **Witness account** (one per evidence fragment, 3 per event):
+  ```
+  Write one sentence as {role} describing something unusual you personally observed, hinting at a medieval {eventType} event without naming the event directly.
+  ```
+
+### Architecture
+
+- `EventGenerator.generateFragments()` sets `account: ""` — a placeholder filled in by the LLM.
+- `TransformersEventWriterService.enrichEvent()` replaces the description **and** all three witness accounts via sequential LLM calls.
+- `generateWitnessAccount()` falls back to `"${witnessName} reported witnessing something unusual."` if the model fails or returns too-short output.
+- The model is pre-loaded on app mount. Events show "Writing history..." while enrichment is in progress.
+
+### Guidance for Agents
+
+- Do **not** add pre-written static text for event descriptions or witness accounts — the LLM owns that content.
+- If you need to tune what witnesses say, adjust the prompt in `generateWitnessAccount()`.
+- If you need to tune event descriptions, adjust the prompt in `enrichEvent()`.
+
+---
+
 ## Development Server
 
 **Always run `npm run dev` in a terminal during local development.** The dev server:

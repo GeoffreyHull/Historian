@@ -290,7 +290,7 @@ export class EventGenerator {
       const observedByPlayer = this.rng.nextBool(0.7);
 
       const eventId = createEventId(`evt-${turnNumber}-${this.eventCounter++}`);
-      const evidenceFragments = this.generateFragments(description, observedByPlayer);
+      const evidenceFragments = this.generateFragments(observedByPlayer);
 
       events.push({
         eventId,
@@ -309,9 +309,9 @@ export class EventGenerator {
   /**
    * Generate named witness/source fragments for an event using seeded RNG.
    * Always produces exactly 3 fragments; availability scales with observation.
+   * Account text is left as a placeholder — filled in by TransformersEventWriterService.
    */
-  private generateFragments(description: string, observedByPlayer: boolean): EvidenceFragment[] {
-    const words = description.split(" ");
+  private generateFragments(observedByPlayer: boolean): EvidenceFragment[] {
     // Pick 3 unique witness names via partial Fisher-Yates shuffle
     const namePool = [...(WITNESS_NAMES as string[])];
     for (let i = 0; i < 3; i++) {
@@ -323,9 +323,7 @@ export class EventGenerator {
       const role = this.rng.pick(WITNESS_ROLES as string[]);
       const reliability = this.rng.pick(["high", "medium", "low"] as ClaimReliability[]);
       const available = observedByPlayer ? this.rng.nextBool(0.8) : this.rng.nextBool(0.2);
-      const start = Math.min(i * 3, Math.max(0, words.length - 6));
-      const excerpt = words.slice(start, start + 7).join(" ");
-      const account = `${witnessName} reported: "${excerpt}..."`;
+      const account = "";
       return { witnessName, role, account, reliability, available };
     });
   }
