@@ -6,6 +6,19 @@ import {
 
 const MODEL_ID = "Xenova/flan-t5-base";
 
+const EVENT_TYPE_TONE: Readonly<Record<string, string>> = {
+  weather: "atmospheric", location: "evocative", character: "vivid",
+  conversation: "tense", action: "urgent", discovery: "mysterious",
+  embargo: "grim", rebellion: "fierce", plague: "harrowing",
+  trade: "bustling", diplomacy: "solemn", military: "martial",
+  religion: "reverent", culture: "festive", economy: "grave",
+  infrastructure: "grand", intrigue: "shadowy", migration: "mournful",
+  magic: "eerie", disaster: "catastrophic", innovation: "triumphant",
+  exploration: "adventurous", justice: "weighty", education: "scholarly",
+  romance: "tender", succession: "solemn", naval: "stormy",
+  agriculture: "pastoral", mining: "laborious", hunting: "wild",
+};
+
 export type ModelLoadStatus = "idle" | "downloading" | "loading" | "ready" | "error";
 
 export interface ModelLoadProgress {
@@ -19,6 +32,13 @@ export class TransformersEventWriterService {
   private initialized = false;
   private loadPromise: Promise<void> | null = null;
   private onProgress: ((p: ModelLoadProgress) => void) | null = null;
+
+  private static readonly GENERATION_PARAMS = {
+    repetition_penalty: 1.3,
+    num_beams: 4,
+    early_stopping: true,
+    no_repeat_ngram_size: 3,
+  } as const;
 
   /**
    * Start loading the model early (call on app mount).
@@ -106,7 +126,6 @@ export class TransformersEventWriterService {
         `[EventGenerator] Enriching event: type=${event.eventType}, id=${event.eventId}`
       );
 
-      // Build context for description generation
       const context = worldState && recentEvents
         ? buildEventDescriptionContext(
             worldState,
@@ -116,19 +135,25 @@ export class TransformersEventWriterService {
           )
         : "";
 
-      const descPrompt = context
-        ? `${context}\n\nCurrent event type: ${event.eventType}\n\nWrite one vivid, poetic sentence describing a ${event.eventType} event happening now. Reference or build on recent events if relevant to create narrative continuity. The event should feel like it's part of an ongoing story.`
-        : `Write one vivid sentence describing a medieval ${event.eventType} event.`;
+      const toneWord = EVENT_TYPE_TONE[event.eventType] ?? "dramatic";
+      const et = event.eventType;
+      const descVariants = [
+        (ctx: string) => ctx
+          ? `Describe in one ${toneWord} medieval sentence: a ${et} event. Context: ${ctx}`
+          : `Describe in one vivid medieval sentence: a ${et} event.`,
+        (ctx: string) => ctx
+          ? `One sentence describing a medieval ${et} event (${toneWord}). Context: ${ctx}`
+          : `One sentence describing a medieval ${et} event (${toneWord}).`,
+        (_ctx: string) => `Describe in one ${toneWord} medieval sentence: a ${et} event.`,
+      ];
 
-      const descResult = await this.textPipeline(descPrompt, {
-        max_new_tokens: 60,
-      });
-      const description = (descResult[0]?.generated_text ?? "").trim();
+      const description = await this.generateWithRetry(
+        (i) => descVariants[i](context),
+        { max_new_tokens: 60 }
+      );
 
-      if (!this.isValidOutput(description)) {
-        console.log(
-          `[EventGenerator] Description validation failed for ${event.eventType}. Raw output: "${description}"`
-        );
+      if (!description) {
+        console.log(`[EventGenerator] All description attempts failed for ${et}`);
         return event;
       }
 
@@ -158,7 +183,7 @@ export class TransformersEventWriterService {
       );
 
       console.log(
-        `[EventGenerator] Generated ${enrichedFragments.length} witness accounts for ${event.eventType}`
+        `[EventGenerator] Generated ${enrichedFragments.length} witness accounts for ${et}`
       );
       enrichedFragments.forEach((f) => {
         console.log(`  - ${f.witnessName} (${f.role}): "${f.account}"`);
@@ -180,17 +205,48 @@ export class TransformersEventWriterService {
     eventType: string,
     context: string = ""
   ): Promise<string> {
-    try {
-      const prompt = context
-        ? `${context}\n\nA ${eventType} event has just occurred.\n\nYou are ${role}. Write one sentence describing something unusual you personally observed, hinting at this ${eventType} event. Your account should be told from your perspective, reflect the mood of the times, and reference the broader context subtly if relevant. Be mysterious or tangential (don't name the event directly).`
-        : `Write one sentence as ${role} describing something unusual you personally observed, hinting at a medieval ${eventType} event without naming the event directly.`;
+    const variants = [
+      (ctx: string) => ctx
+        ? `Write one sentence as ${role} hinting at a ${eventType} without naming it. Context: ${ctx}`
+        : `Write one sentence as ${role} hinting at a medieval ${eventType} without naming it.`,
+      (ctx: string) => ctx
+        ? `One sentence from ${role}'s view about unusual signs of a ${eventType}. Context: ${ctx}`
+        : `One sentence from ${role}'s view about unusual signs of a medieval ${eventType}.`,
+      (_ctx: string) => `One sentence from ${role}'s perspective hinting at a medieval ${eventType}.`,
+    ];
 
-      const result = await this.textPipeline(prompt, { max_new_tokens: 50 });
-      const text = (result[0]?.generated_text ?? "").trim();
-      if (this.isValidOutput(text, 10))
-        return `${witnessName} reported: "${text}"`;
-    } catch { /* fall through */ }
-    return `${witnessName} reported witnessing something unusual.`;
+    const text = await this.generateWithRetry(
+      (i) => variants[i](context),
+      { max_new_tokens: 50 },
+      10
+    );
+
+    return text
+      ? `${witnessName} reported: "${text}"`
+      : `${witnessName} reported witnessing something unusual.`;
+  }
+
+  private async generateWithRetry(
+    buildPrompt: (attempt: number) => string,
+    params: { max_new_tokens: number },
+    minLength: number = 15
+  ): Promise<string | null> {
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result: any[] = await this.textPipeline(buildPrompt(attempt), {
+          ...params,
+          ...TransformersEventWriterService.GENERATION_PARAMS,
+        });
+        const text = (result[0]?.generated_text ?? "").trim();
+        if (this.isValidOutput(text, minLength)) return text;
+        console.log(`[EventGenerator] Attempt ${attempt + 1} failed validation. Raw: "${text}"`);
+      } catch {
+        console.log(`[EventGenerator] Attempt ${attempt + 1} threw error`);
+      }
+    }
+    return null;
   }
 
   private isValidOutput(text: string, minLength: number = 15): boolean {
@@ -198,6 +254,10 @@ export class TransformersEventWriterService {
     if (/^[^a-zA-Z]*$/.test(text)) return false;
     // Reject repetitive word patterns (same word 3+ times in sequence)
     if (/(\b\w+\b)(\s+\1){2,}/.test(text)) return false;
+    // Reject prompt echo — flan-t5's most common failure mode
+    if (/^(write|describe|you are|one sentence)/i.test(text)) return false;
+    // Reject multi-word phrase repetition
+    if (/(\b\w[\w\s]{10,}\b).*\1/.test(text)) return false;
     return true;
   }
 }
