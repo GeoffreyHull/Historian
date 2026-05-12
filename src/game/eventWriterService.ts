@@ -1,6 +1,6 @@
 import { Event, Faction } from "./types";
 
-const MODEL_ID = "Xenova/flan-t5-small";
+const MODEL_ID = "Xenova/flan-t5-base";
 
 export type ModelLoadStatus = "idle" | "downloading" | "loading" | "ready" | "error";
 
@@ -75,11 +75,18 @@ export class TransformersEventWriterService {
 
   private async enrichEvent(event: Event, _turnNumber: number, _faction: Faction): Promise<Event> {
     try {
+      console.log(`[EventGenerator] Enriching event: type=${event.eventType}, id=${event.eventId}`);
+
       const descPrompt = `Write one vivid sentence describing a medieval ${event.eventType} event.`;
       const descResult = await this.textPipeline(descPrompt, { max_new_tokens: 60 });
       const description = (descResult[0]?.generated_text ?? "").trim();
 
-      if (description.length < 15 || /^[^a-zA-Z]*$/.test(description)) return event;
+      if (!this.isValidOutput(description)) {
+        console.log(`[EventGenerator] Description validation failed for ${event.eventType}. Raw output: "${description}"`);
+        return event;
+      }
+
+      console.log(`[EventGenerator] Generated description: "${description}"`);
 
       const enrichedFragments = await Promise.all(
         event.evidenceFragments.map((f) =>
@@ -90,8 +97,14 @@ export class TransformersEventWriterService {
         )
       );
 
+      console.log(`[EventGenerator] Generated ${enrichedFragments.length} witness accounts for ${event.eventType}`);
+      enrichedFragments.forEach((f) => {
+        console.log(`  - ${f.witnessName} (${f.role}): "${f.account}"`);
+      });
+
       return { ...event, description, evidenceFragments: enrichedFragments };
-    } catch {
+    } catch (err) {
+      console.error(`[EventGenerator] Error enriching event ${event.eventType}:`, err);
       return event;
     }
   }
@@ -105,9 +118,17 @@ export class TransformersEventWriterService {
       const prompt = `Write one sentence as ${role} describing something unusual you personally observed, hinting at a medieval ${eventType} event without naming the event directly.`;
       const result = await this.textPipeline(prompt, { max_new_tokens: 50 });
       const text = (result[0]?.generated_text ?? "").trim();
-      if (text.length >= 10) return `${witnessName} reported: "${text}"`;
+      if (this.isValidOutput(text, 10)) return `${witnessName} reported: "${text}"`;
     } catch { /* fall through */ }
     return `${witnessName} reported witnessing something unusual.`;
+  }
+
+  private isValidOutput(text: string, minLength: number = 15): boolean {
+    if (text.length < minLength) return false;
+    if (/^[^a-zA-Z]*$/.test(text)) return false;
+    // Reject repetitive word patterns (same word 3+ times in sequence)
+    if (/(\b\w+\b)(\s+\1){2,}/.test(text)) return false;
+    return true;
   }
 }
 
