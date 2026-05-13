@@ -1,13 +1,10 @@
 /**
- * EventGenerator: Deterministic event generation with seeded randomness.
- * Constraint 3: Uses SeededRNG for all randomness.
- * Constraint 9: Same seed → identical events (determinism of fragments).
+ * EventGenerator: Event generation with randomness.
  * Supports probabilistic shaping via faction beliefs (Epic 4).
  * Supports LLM-generated event types via suggestEventTypes().
  */
 
 import { Event, EventId, TurnNumber, TruthValue, EvidenceFragment, ClaimReliability, createEventId, Faction, CascadingConsequence } from "./types";
-import { SeededRNG } from "./rng";
 import { WITNESS_NAMES, WITNESS_ROLES } from "./constants";
 import { getFactionBeliefInfluence, getConsequenceTexts, getWorldVariableEventWeights } from "./worldStateManager";
 import type { WorldState } from "./types";
@@ -229,18 +226,15 @@ const EVENT_DESCRIPTIONS_BY_TYPE: Record<string, string[]> = {
 const EVENT_TYPES = Object.keys(EVENT_DESCRIPTIONS_BY_TYPE);
 
 /**
- * EventGenerator: Generate deterministic events with seeded randomness.
+ * EventGenerator: Generate events with randomness.
  * Supports probabilistic shaping via faction beliefs and consequence references.
  */
 export class EventGenerator {
-  private rng: SeededRNG;
   private eventCounter: number = 0;
   private worldState: WorldState | null = null;
   private currentFaction: Faction | null = null;
 
-  constructor(seed: number) {
-    this.rng = new SeededRNG(seed);
-  }
+  constructor() {}
 
   /**
    * Set world state for faction belief influence (optional, for Epic 4).
@@ -285,14 +279,11 @@ export class EventGenerator {
   }
 
   /**
-   * Select one event type from suggested types using seeded RNG.
-   * Ensures deterministic selection while allowing LLM creativity in suggestions.
+   * Select one event type from suggested types.
    */
   selectEventType(suggestedTypes: string[]): string {
-    if (suggestedTypes.length === 0) {
-      return this.rng.pick(EVENT_TYPES);
-    }
-    return this.rng.pick(suggestedTypes);
+    const types = suggestedTypes.length > 0 ? suggestedTypes : EVENT_TYPES;
+    return types[Math.floor(Math.random() * types.length)];
   }
 
   /**
@@ -324,17 +315,18 @@ export class EventGenerator {
           ? forcedEventType
           : this.pickWeightedEventType(beliefInfluence, variableWeights);
 
-      let description = this.rng.pick(EVENT_DESCRIPTIONS_BY_TYPE[eventType] || []);
+      const descriptions = EVENT_DESCRIPTIONS_BY_TYPE[eventType] || [];
+      let description = descriptions[Math.floor(Math.random() * descriptions.length)];
 
       // Optionally add consequence reference to description
-      if (consequenceTexts.length > 0 && this.rng.nextBool(0.3)) {
-        const reference = this.rng.pick(consequenceTexts);
+      if (consequenceTexts.length > 0 && Math.random() < 0.3) {
+        const reference = consequenceTexts[Math.floor(Math.random() * consequenceTexts.length)];
         description = `${description} (${reference})`;
       }
 
-      const truthValue: TruthValue = this.rng.nextBool(0.5) ? "true" : "false";
+      const truthValue: TruthValue = Math.random() < 0.5 ? "true" : "false";
       // Observation: 70% chance to observe
-      const observedByPlayer = this.rng.nextBool(0.7);
+      const observedByPlayer = Math.random() < 0.7;
 
       const eventId = createEventId(`evt-${turnNumber}-${this.eventCounter++}`);
       const evidenceFragments = this.generateFragments(observedByPlayer);
@@ -354,7 +346,7 @@ export class EventGenerator {
   }
 
   /**
-   * Generate named witness/source fragments for an event using seeded RNG.
+   * Generate named witness/source fragments for an event.
    * Always produces exactly 3 fragments; availability scales with observation.
    * Account text is left as a placeholder — filled in by TransformersEventWriterService.
    */
@@ -362,14 +354,14 @@ export class EventGenerator {
     // Pick 3 unique witness names via partial Fisher-Yates shuffle
     const namePool = [...(WITNESS_NAMES as string[])];
     for (let i = 0; i < 3; i++) {
-      const j = this.rng.nextInt(i, namePool.length);
+      const j = i + Math.floor(Math.random() * (namePool.length - i));
       [namePool[i], namePool[j]] = [namePool[j], namePool[i]];
     }
     return Array.from({ length: 3 }, (_, i) => {
       const witnessName = namePool[i];
-      const role = this.rng.pick(WITNESS_ROLES as string[]);
-      const reliability = this.rng.pick(["high", "medium", "low"] as ClaimReliability[]);
-      const available = observedByPlayer ? this.rng.nextBool(0.8) : this.rng.nextBool(0.2);
+      const role = WITNESS_ROLES[Math.floor(Math.random() * WITNESS_ROLES.length)];
+      const reliability: ClaimReliability = ["high", "medium", "low"][Math.floor(Math.random() * 3)] as ClaimReliability;
+      const available = observedByPlayer ? Math.random() < 0.8 : Math.random() < 0.2;
       const account = "";
       return { witnessName, role, account, reliability, available };
     });
@@ -383,7 +375,7 @@ export class EventGenerator {
     variableWeights: Readonly<Record<string, number>>
   ): string {
     if (Object.keys(beliefInfluence).length === 0) {
-      return this.rng.pick(EVENT_TYPES);
+      return EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
     }
 
     // Combine belief influence with variable weights multiplicatively
@@ -400,7 +392,7 @@ export class EventGenerator {
 
     // Cumulative distribution
     let cumsum = 0;
-    const roll = this.rng.next();
+    const roll = Math.random();
 
     for (let i = 0; i < types.length; i++) {
       cumsum += normalized[i];

@@ -1,9 +1,8 @@
 /**
  * SessionPersistence: Save and load game state to/from localStorage.
  * Constraint 5: All data is JSON-serializable.
- * FR32, FR33, FR46, FR47: Save/resume with deterministic restoration.
+ * FR32, FR33: Save/resume functionality.
  * NFR4: Atomic save operations.
- * NFR5: Deterministic resumption (same seed = same events).
  */
 
 import { GameState, EventId } from "./types";
@@ -51,11 +50,6 @@ export function validateGameState(obj: unknown): GameState | null {
 
   if (typeof state.worldState.runNumber !== 'number') {
     console.error('Invalid worldState.runNumber:', state.worldState.runNumber);
-    return null;
-  }
-
-  if (typeof state.worldState.initialSeed !== 'number') {
-    console.error('Invalid worldState.initialSeed:', state.worldState.initialSeed);
     return null;
   }
 

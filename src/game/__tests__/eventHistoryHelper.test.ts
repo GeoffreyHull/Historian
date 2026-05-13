@@ -38,7 +38,6 @@ describe("eventHistoryHelper", () => {
   });
 
   const mockWorldState = (): WorldState => ({
-    initialSeed: 42,
     runNumber: 1,
     factionBeliefs: {
       historian: [],

@@ -28,10 +28,8 @@ import {
 
 /**
  * Create initial world state for run 1.
- * initialSeed: Deterministic seed for event generation across all runs.
- * FR46-FR47: Same seed ensures identical event sequences on resumption.
  */
-export function createInitialWorldState(initialSeed: number = Math.floor(Math.random() * 1000000)): WorldState {
+export function createInitialWorldState(): WorldState {
   const factionList: readonly Faction[] = ["historian", "scholar", "witness", "scribe", "diplomat", "rebel", "merchant"];
   const factionBeliefs = Object.fromEntries(
     factionList.map((f) => [f, [] as readonly FactionBelief[]])
@@ -44,7 +42,6 @@ export function createInitialWorldState(initialSeed: number = Math.floor(Math.ra
   };
 
   return {
-    initialSeed,
     runNumber: 1,
     factionBeliefs,
     consequences: [],
@@ -86,7 +83,6 @@ export function evolveToNextRun(
   };
 
   return {
-    initialSeed: currentWorldState.initialSeed, // Preserve seed across runs for deterministic resumption (FR46-FR47)
     runNumber: nextRun,
     factionBeliefs: decayedBeliefs,
     consequences: decayedConsequences,

@@ -1,6 +1,6 @@
 /**
  * Credibility System Tests: 120+ parametrized test cases.
- * Validates: accuracy, penalties, insults, influence, immutability, determinism.
+ * Validates: accuracy, penalties, insults, influence, immutability.
  * Phase 2: All credibility functions are async with optional EmbeddingService injection.
  */
 
@@ -227,7 +227,7 @@ describe("Immutability & Purity (AC5)", () => {
 });
 
 // ============================================================================
-// AC6: Integration Test - End-to-end flow (Constraint 9: Determinism)
+// AC6: Integration Test - End-to-end flow
 // ============================================================================
 
 describe("Integration: Full Credibility Flow (AC6)", () => {
@@ -257,28 +257,6 @@ describe("Integration: Full Credibility Flow (AC6)", () => {
     expect(results[1].hasInsult).toBe(true);
     // Insulting claim should have a penalty due to insult
     expect(results[1].penalty).toBeGreaterThanOrEqual(10);
-  });
-
-  golden("should be deterministic: same seed → identical state hash", async () => {
-    const claims = [
-      createAccurateClaim(SEEDED_EVENTS[0]),
-      createAccurateClaim(SEEDED_EVENTS[1]),
-    ];
-
-    const results1 = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
-    const results2 = await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
-
-    const hash1 = hashGameState(results1);
-    const hash2 = hashGameState(results2);
-
-    expect(hash1).toBe(hash2);
-  });
-
-  golden("should be deterministic: 100× identical results", async () => {
-    await assertDeterministic(async () => {
-      const claims = [createAccurateClaim(SEEDED_EVENTS[0])];
-      return await evaluateClaimsBatch(claims, SEEDED_EVENTS, "historian", embeddingService);
-    }, 100);
   });
 
   golden("should produce JSON-serializable results", async () => {

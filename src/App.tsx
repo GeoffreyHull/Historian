@@ -25,8 +25,7 @@ import styles from "./App.module.css";
 type Screen = "menu" | "playing" | "recap" | "history" | "game_over";
 
 function generateBaseEventsForState(state: GameState): Event[] {
-  const seed = state.worldState.initialSeed + state.turnNumber;
-  const gen = new EventGenerator(seed);
+  const gen = new EventGenerator();
   gen.setWorldState(state.worldState, state.currentFaction);
   return gen.generateEvents(state.turnNumber, 3);
 }

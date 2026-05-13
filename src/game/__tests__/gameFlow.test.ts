@@ -194,33 +194,6 @@ describe("E2E: Full Game Flow", () => {
     });
   });
 
-  describe("Determinism (Constraint 9)", () => {
-    golden("should produce identical state evolution for same seed + same actions", async () => {
-      const claims = [createClaim({ claimText: "test", eventId: createEventId("evt-1"), isAboutObservedEvent: true, turnNumber: 1 })];
-
-      // Use a fixed seed world state for determinism
-      const fixedWorldState = { ...createInitialGameState("historian").worldState, initialSeed: 12345 };
-
-      const states1: string[] = [];
-      const states2: string[] = [];
-
-      let s1 = createInitialGameState("historian", createTurn(1), fixedWorldState);
-      let s2 = createInitialGameState("historian", createTurn(1), fixedWorldState);
-
-      for (let i = 1; i <= 3; i++) {
-        const r1 = await executeTurn(s1, claims);
-        const r2 = await executeTurn(s2, claims);
-        states1.push(JSON.stringify(r1.updatedState));
-        states2.push(JSON.stringify(r2.updatedState));
-        s1 = r1.updatedState;
-        s2 = r2.updatedState;
-        if (r1.runEnded || r2.runEnded) break;
-      }
-
-      expect(states1).toEqual(states2);
-    });
-  });
-
   describe("Turn Snapshots for Retcon", () => {
     it("should accumulate turn snapshots during gameplay", async () => {
       let state = createInitialGameState("historian");

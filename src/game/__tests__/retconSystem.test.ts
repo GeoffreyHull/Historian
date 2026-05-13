@@ -36,7 +36,7 @@ function makeStateWithSnapshots(influence = 20, snapshotTurns: number[] = [1, 2]
     influence: 30,
     factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0, diplomat: 0, rebel: 0, merchant: 0 },
     credibilityMap: {},
-    worldState: createInitialWorldState(42),
+    worldState: createInitialWorldState(),
   }));
   return { ...base, influence, turnSnapshots: snapshots, turnNumber: createTurn(3) };
 }
@@ -200,7 +200,7 @@ describe("cancelRetcon", () => {
       influence: 40,
       factionTrust: { historian: 5, scholar: 5, witness: 5, scribe: 5, diplomat: 5, rebel: 5, merchant: 5 },
       credibilityMap: {},
-      worldState: createInitialWorldState(42),
+      worldState: createInitialWorldState(),
     };
     const restored = cancelRetcon(state, originalSnapshot);
     expect(restored.turnNumber).toBe(3);
@@ -216,7 +216,7 @@ describe("cancelRetcon", () => {
       influence: 99,
       factionTrust: { historian: 0, scholar: 0, witness: 0, scribe: 0, diplomat: 0, rebel: 0, merchant: 0 },
       credibilityMap: {},
-      worldState: createInitialWorldState(1),
+      worldState: createInitialWorldState(),
     };
     const originalInfluence = state.influence;
     cancelRetcon(state, originalSnapshot);

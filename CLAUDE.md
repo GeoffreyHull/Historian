@@ -8,7 +8,7 @@ Tests marked with the `golden()` wrapper validate **core architectural constrain
 
 - **Prefixed with `[G]`** in test name (e.g., "[G] should not mutate claim input")
 - **Wrapped with `golden()`** function call instead of `it()`
-- **Validates core constraints** (Constraint 1: pure functions, Constraint 2: immutability, Constraint 5: JSON serialization, Constraint 9: determinism) or **acceptance criteria** (AC5, AC6, etc.)
+- **Validates core constraints** (Constraint 1: pure functions, Constraint 2: immutability, Constraint 5: JSON serialization) or **acceptance criteria** (AC5, AC6, etc.)
 - **Immutable by design** — removal requires justification and approval
 
 ### When to modify or remove golden tests
@@ -60,10 +60,7 @@ The GitHub Actions CI will still run and must pass — your commit message docum
 Golden tests in this file:
 - **AC5 (Immutability & Purity)**: 4 tests
   - Validates that credibility system functions never mutate inputs
-  - Validates that credibility calculations are deterministic
-- **AC6 (Integration & Determinism)**: 3 tests
-  - Validates batch claim evaluation
-  - Validates 100× identical results with same seed
+- **AC6 (Integration)**: 1 test
   - Validates JSON serialization round-trip
 
 ### `src/game/__tests__/gameManager.test.ts`
@@ -78,10 +75,7 @@ Golden tests in this file:
 
 ### `src/game/__tests__/eventGenerator.test.ts`
 
-Golden tests in this file:
-- **Constraint 9 (Determinism)**: 2 tests
-  - Validates that same seed produces identical events
-  - Validates that event descriptions are deterministic
+Golden tests in this file: None (seeded event generation has been removed)
 
 ---
 

@@ -1,7 +1,7 @@
 /**
  * TurnExecutor: Executes a single turn through all phases (FR31).
  * Constraint 1: Pure functions, no mutations.
- * Constraint 9: Explicit ordering: events → observation → claims → credibility → influence → world state update.
+ * Explicit ordering: events → observation → claims → credibility → influence → world state update.
  *
  * Phase 2: Async embedding service integration.
  * Pending claims are resolved asynchronously before turn events are generated.
@@ -104,10 +104,7 @@ export async function executeTurn(
     await resolveDuePendingClaims(gameState, embeddingService);
   const currentTurn = resolvedState.turnNumber;
 
-  // FR46-FR47: Use world's initial seed for deterministic event generation across run resumptions
-  // Constraint 9: Turn-phase determinism requires seed stability, not turn-based variation
-  const deterministicSeed = resolvedState.worldState.initialSeed + currentTurn;
-  const eventGenerator = new EventGenerator(deterministicSeed);
+  const eventGenerator = new EventGenerator();
 
   // Phase 1: Generate events for this turn (FR20: honour any pending forced event type)
   // Use pre-generated (possibly LLM-enriched) events if provided, so claim evaluation

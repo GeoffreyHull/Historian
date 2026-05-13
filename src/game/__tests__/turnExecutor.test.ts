@@ -41,28 +41,6 @@ describe("[G] Turn Executor - Epic 6 Tests", () => {
       expect(result.updatedState.turnNumber).toBe(2);
     });
 
-    it("[G] should produce identical results for identical inputs", async () => {
-      const state = createInitialGameState();
-      const claims = [
-        createClaim({
-          claimText: "Test",
-          eventId: createEventId("evt-1"),
-          isAboutObservedEvent: true,
-          turnNumber: 1,
-        }),
-      ];
-
-      const results = [];
-      for (let i = 0; i < 5; i++) {
-        const result = await executeTurn(state, claims);
-        results.push(JSON.stringify(result.updatedState));
-      }
-
-      const first = results[0];
-      for (let i = 1; i < results.length; i++) {
-        expect(results[i]).toBe(first);
-      }
-    });
   });
 
   describe("AC6: Integration & Determinism", () => {
