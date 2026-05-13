@@ -158,19 +158,6 @@ export interface CascadingConsequence extends ConsequenceRecord {
  */
 export type FactionTrustMap = Readonly<Record<string, number>>;
 
-/**
- * TurnSnapshot: Saved state snapshot at the start of a turn, before claims.
- * Used by the retcon mechanic to rewind and replace claims.
- */
-export interface TurnSnapshot {
-  readonly turnNumber: TurnNumber;
-  readonly events: readonly Event[];
-  readonly claims: readonly Claim[];
-  readonly influence: number;
-  readonly factionTrust: FactionTrustMap;
-  readonly credibilityMap: Readonly<Record<EventId, number>>;
-  readonly worldState: WorldState;
-}
 
 /**
  * GameState: Complete game state, 100% JSON-serializable.
@@ -186,7 +173,6 @@ export interface GameState {
   readonly isGameOver: boolean; // Game end state
   readonly worldState: WorldState; // Persistent state across runs
   readonly pendingForcedEventType: string | null; // FR20: event type guaranteed next turn (null = none)
-  readonly turnSnapshots: readonly TurnSnapshot[]; // History of turn snapshots for retcon
   readonly pendingClaims: readonly PendingClaim[]; // Claims awaiting retroactive score revelation
 }
 

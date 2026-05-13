@@ -16,7 +16,6 @@ import {
   createTurn,
   WorldState,
   RunRecap,
-  TurnSnapshot,
   PendingClaim,
 } from "./types";
 import { EventGenerator } from "./eventGenerator";
@@ -113,17 +112,6 @@ export async function executeTurn(
   const events =
     preGeneratedEvents ?? eventGenerator.generateEvents(currentTurn, 3, resolvedState.pendingForcedEventType);
 
-  // Save turn snapshot for retcon (before claims are processed)
-  const snapshot: TurnSnapshot = {
-    turnNumber: currentTurn,
-    events,
-    claims: resolvedState.claims,
-    influence: resolvedState.influence,
-    factionTrust: { ...resolvedState.factionTrust },
-    credibilityMap: { ...resolvedState.credibilityMap },
-    worldState: resolvedState.worldState,
-  };
-
   // Phase 2: Observation is already determined (set in events)
   // No changes needed; EventGenerator sets observedByPlayer
 
@@ -197,7 +185,6 @@ export async function executeTurn(
     };
 
     // Reset game state for next run (factionTrust resets each run — fresh start)
-    // Clear turnSnapshots since retcon only applies within a run
     state = {
       ...state,
       turnNumber: createTurn(1),
@@ -208,7 +195,6 @@ export async function executeTurn(
       worldState: worldStateWithRecap,
       isGameOver: false,
       pendingForcedEventType: null,
-      turnSnapshots: [],
     };
 
     return {
@@ -236,7 +222,6 @@ export async function executeTurn(
         worldVariables: updatedVariables,
         consequences: updatedConsequences,
       },
-      turnSnapshots: [...state.turnSnapshots, snapshot],
       turnNumber: nextTurn,
       claims: [],
     };
