@@ -28,7 +28,6 @@ export function createInitialGameState(
     isGameOver: false,
     worldState: worldState ?? createInitialWorldState(),
     pendingForcedEventType: null,
-    turnSnapshots: [],
     pendingClaims: [],
   };
 }

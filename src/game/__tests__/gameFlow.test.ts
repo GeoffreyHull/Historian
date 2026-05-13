@@ -220,30 +220,4 @@ describe("E2E: Full Game Flow", () => {
       expect(states1).toEqual(states2);
     });
   });
-
-  describe("Turn Snapshots for Retcon", () => {
-    it("should accumulate turn snapshots during gameplay", async () => {
-      let state = createInitialGameState("historian");
-
-      for (let i = 1; i <= 4; i++) {
-        state = (await executeTurn(state, [])).updatedState;
-      }
-
-      // Should have snapshots for turns 1-4
-      expect(state.turnSnapshots.length).toBeGreaterThanOrEqual(3);
-    });
-
-    it("should clear turn snapshots on new run", async () => {
-      let state = createInitialGameState("historian");
-
-      for (let i = 1; i < 10; i++) {
-        state = (await executeTurn(state, [])).updatedState;
-      }
-
-      const result = await executeTurn(state, []);
-
-      // New run should have empty snapshots
-      expect(result.updatedState.turnSnapshots).toEqual([]);
-    });
-  });
 });
