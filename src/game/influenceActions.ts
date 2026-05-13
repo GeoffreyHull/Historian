@@ -14,9 +14,6 @@ export const BUY_INTEL_COST = 2;
 /** Cost in influence units to force a specific event type next turn (FR20). */
 export const FORCE_EVENT_COST = 3;
 
-/** Cost in influence units to use retcon (rewind to a past turn and replace claims). */
-export const RETCON_COST = 5;
-
 /**
  * CanBuyIntel: Returns true if the player can spend influence to reveal the given event.
  * Conditions: event exists, is not already observed, and player has enough influence.
@@ -75,37 +72,3 @@ export function forceEvent(gameState: GameState, eventType: string): GameState {
   };
 }
 
-/**
- * CanRetcon: Returns true if the player can rewind to the given turn.
- * Conditions: turn exists in snapshots, turn is in the past, enough influence.
- */
-export function canRetcon(gameState: GameState, targetTurn: TurnNumber): boolean {
-  if (gameState.influence < RETCON_COST) return false;
-  if (targetTurn >= gameState.turnNumber) return false;
-  return gameState.turnSnapshots.some((s) => s.turnNumber === targetTurn);
-}
-
-/**
- * Retcon: Spend influence to rewind to a past turn snapshot.
- * Restores the game state to the beginning of that turn, before claims were made.
- * All subsequent turn data is preserved in worldState but replayable from this point.
- * FR20-variant: Rewind, modify claims, see new consequences.
- */
-export function retcon(gameState: GameState, targetTurn: TurnNumber): GameState {
-  if (!canRetcon(gameState, targetTurn)) return gameState;
-
-  const snapshot = gameState.turnSnapshots.find((s) => s.turnNumber === targetTurn);
-  if (!snapshot) return gameState;
-
-  return {
-    ...gameState,
-    turnNumber: targetTurn,
-    events: snapshot.events,
-    claims: [],
-    influence: gameState.influence - RETCON_COST,
-    factionTrust: { ...snapshot.factionTrust },
-    credibilityMap: { ...snapshot.credibilityMap },
-    worldState: snapshot.worldState,
-    pendingForcedEventType: null,
-  };
-}

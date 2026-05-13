@@ -3,7 +3,7 @@ import { createInitialGameState } from "./game/gameManager";
 import { EventGenerator } from "./game/eventGenerator";
 import { executeTurn } from "./game/turnExecutor";
 import { defaultEventWriterService, TransformersEventWriterService, ModelLoadProgress } from "./game/eventWriterService";
-import { Claim, CredibilityResult, Event, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber, TurnSnapshot } from "./game/types";
+import { Claim, CredibilityResult, Event, Faction, GameState, PendingClaim, RunRecap as RunRecapData, TurnNumber } from "./game/types";
 import { CLAIM_REVEAL_DELAY } from "./game/constants";
 import { saveGameState, loadGameState, hasSavedGame as checkHasSavedGame } from "./game/sessionPersistence";
 import { buildHistoryBookData } from "./game/historyBookUtils";
@@ -18,8 +18,6 @@ import { WorldVariables } from "./components/WorldVariables";
 import { RunRecap } from "./components/RunRecap";
 import { HistoryBook } from "./components/HistoryBook";
 import { CascadeView } from "./components/CascadeView";
-import { RetconPanel } from "./components/RetconPanel";
-import { canRetcon, getRetconTargets, enterRetcon, commitRetcon, cancelRetcon, takeSnapshot, RETCON_COST } from "./game/retconSystem";
 import styles from "./App.module.css";
 
 type Screen = "menu" | "playing" | "recap" | "history" | "game_over";
@@ -57,9 +55,6 @@ export const App: React.FC = () => {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [hasSaved, setHasSaved] = useState<boolean>(() => checkHasSavedGame());
   const [previousScreen, setPreviousScreen] = useState<Screen>("playing");
-  const [isInRetcon, setIsInRetcon] = useState<boolean>(false);
-  const [retconTargetTurn, setRetconTargetTurn] = useState<TurnNumber | null>(null);
-  const [retconOriginalSnapshot, setRetconOriginalSnapshot] = useState<TurnSnapshot | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(false);
   const [modelProgress, setModelProgress] = useState<ModelLoadProgress>({ status: "idle" });
   // Track the events shown this turn so executeTurn evaluates claims against the same text
@@ -79,46 +74,6 @@ export const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [saveMessage]);
 
-  const handleEnterRetcon = async (targetTurn: TurnNumber) => {
-    if (!canRetcon(gameState, targetTurn)) return;
-    const snapshot = takeSnapshot(gameState);
-    setRetconOriginalSnapshot(snapshot);
-    setRetconTargetTurn(targetTurn);
-    setIsInRetcon(true);
-    const rewound = enterRetcon(gameState, targetTurn);
-    setIsLoadingEvents(true);
-    const events = await generateEventsForState(rewound, defaultEventWriterService);
-    setIsLoadingEvents(false);
-    currentEventsRef.current = events;
-    setGameState({ ...rewound, events });
-    setCurrentClaims([]);
-    setResolvedClaimResults([]);
-  };
-
-  const handleCommitRetcon = () => {
-    if (retconTargetTurn === null) return;
-    const committed = commitRetcon(gameState, retconTargetTurn);
-    setGameState(committed);
-    setIsInRetcon(false);
-    setRetconTargetTurn(null);
-    setRetconOriginalSnapshot(null);
-  };
-
-  const handleCancelRetcon = async () => {
-    if (!retconOriginalSnapshot) return;
-    const restored = cancelRetcon(gameState, retconOriginalSnapshot);
-    setIsLoadingEvents(true);
-    const events = await generateEventsForState(restored, defaultEventWriterService);
-    setIsLoadingEvents(false);
-    currentEventsRef.current = events;
-    setGameState({ ...restored, events });
-    setCurrentClaims([]);
-    setResolvedClaimResults([]);
-    setIsInRetcon(false);
-    setRetconTargetTurn(null);
-    setRetconOriginalSnapshot(null);
-  };
-
   const handleStartGame = async (faction: Faction) => {
     const initial = createInitialGameState(faction);
     setIsLoadingEvents(true);
@@ -130,9 +85,6 @@ export const App: React.FC = () => {
     setResolvedClaimResults([]);
     setRecap(null);
     setNextRunState(null);
-    setIsInRetcon(false);
-    setRetconTargetTurn(null);
-    setRetconOriginalSnapshot(null);
     setScreen("playing");
   };
 
@@ -531,16 +483,6 @@ export const App: React.FC = () => {
         <aside className={styles.sidebar}>
           <WorldVariables variables={gameState.worldState.worldVariables} />
           <CascadeView consequences={gameState.worldState.consequences} />
-          <RetconPanel
-            currentInfluence={gameState.influence}
-            retconCost={RETCON_COST}
-            availableTurns={getRetconTargets(gameState)}
-            isInRetcon={isInRetcon}
-            retconTargetTurn={retconTargetTurn}
-            onEnterRetcon={handleEnterRetcon}
-            onCommitRetcon={handleCommitRetcon}
-            onCancelRetcon={handleCancelRetcon}
-          />
           <FactionTrust
             factions={[
               { name: "historian", emoji: "📖", trust: gameState.factionTrust.historian },
